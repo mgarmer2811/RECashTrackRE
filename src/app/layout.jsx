@@ -1,5 +1,6 @@
 import "./globals.css";
 import { AuthProvider } from "./utils/AuthProvider";
+import Sidebar from "@/components/SideBar";
 
 export const metadata = {
   title: "CashTrack",
@@ -10,8 +11,15 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+      <body className="min-h-screen bg-gray-50 text-gray-900">
+        <AuthProvider>
+          <div className="flex">
+            <Sidebar />
+            <main className="flex-1 min-h-screen pt-[5vh] md:pt-0 p-6 sm:p-8">
+              <div className="max-w-6xl mx-auto">{children}</div>
+            </main>
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );

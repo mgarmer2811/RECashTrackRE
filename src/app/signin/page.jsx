@@ -42,7 +42,7 @@ export default function SignInPage() {
         >
           CashTrack
         </h1>
-        <p className="text-sm text-gray-500 text-center mb-6">
+        <p className="text-sm text-gray-600 text-center mb-6">
           Enter your credentials to continue
         </p>
 

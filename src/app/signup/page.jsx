@@ -48,7 +48,7 @@ export default function SignUpPage() {
         >
           CashTrack
         </h1>
-        <p className="text-sm text-gray-500 text-center mb-6">
+        <p className="text-sm text-gray-600 text-center mb-6">
           Create an account to start using <i>CashTrack</i>
         </p>
 
