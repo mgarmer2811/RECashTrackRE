@@ -4,7 +4,7 @@ import { useAuth } from "../utils/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function Home() {
+export default function Settings() {
   const { user, loading } = useAuth();
   const router = useRouter();
 

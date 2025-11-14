@@ -6,7 +6,7 @@ import Link from "next/link";
 import UserIcon from "./UserIcon";
 import FamilyIcon from "./FamilyIcon";
 import SettingsIcon from "./SettingsIcon";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import DollarIcon from "./DollarIcon";
 
 export default function Sidebar() {
