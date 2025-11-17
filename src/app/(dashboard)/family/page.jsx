@@ -1,10 +1,11 @@
 "use client";
 
-import { useAuth } from "../utils/AuthProvider";
+import FamilySettings from "@/components/FamilySettings";
+import { useAuth } from "../../utils/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-export default function Home() {
+export default function Family() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -22,5 +23,5 @@ export default function Home() {
     return null;
   }
 
-  return <p>Bienvenido usuario con pid:( {user.id} )</p>;
+  return <FamilySettings user={user} />;
 }

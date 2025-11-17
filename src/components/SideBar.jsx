@@ -17,16 +17,11 @@ export default function Sidebar() {
     setOpen(false);
   }, [pathname]);
 
-  const hideOn = ["/signin", "/signup"];
-  const showNav = !hideOn.some((p) => pathname?.startsWith(p));
-
   const navItems = [
     { label: "Home", href: "/", icon: UserIcon },
     { label: "Family", href: "/family", icon: FamilyIcon },
     { label: "Settings", href: "/settings", icon: SettingsIcon },
   ];
-
-  if (!showNav) return null;
 
   return (
     <>
@@ -37,14 +32,14 @@ export default function Sidebar() {
           md:w-[clamp(10rem,16vw,20vw)]
           md:self-start md:sticky md:top-8
           md:h-[calc(100vh-4rem)]
-          bg-white rounded-2xl shadow-lg border border-gray-100
+          bg-white rounded-lg shadow-lg border border-gray-100
           p-2 mx-6
         `}
       >
         <div className="border-b border-gray-100 rounded-t-2xl">
           <div className="flex items-center gap-2 px-3 py-2">
             <DollarIcon size={28} className="text-gray-600" />
-            <h1 className="text-lg font-semibold text-gray-600">CashTrack</h1>
+            <h1 className="text-lg font-semibold text-gray-600">RECashTrack</h1>
           </div>
         </div>
 
@@ -98,7 +93,7 @@ export default function Sidebar() {
               <div className="flex items-center gap-2 px-1 py-1">
                 <DollarIcon size={28} className="text-gray-600" />
                 <h3 className="text-lg font-semibold text-gray-600">
-                  CashTrack
+                  RECashTrack
                 </h3>
               </div>
             </div>

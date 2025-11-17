@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import supabase from "../utils/SupabaseClient";
+import supabase from "../../utils/SupabaseClient";
 import DollarIcon from "@/components/DollarIcon";
 import EmailIcon from "@/components/EmailIcon";
 import PasswordIcon from "@/components/PasswordIcon";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -37,7 +39,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-[100svh] flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-xl border border-gray-200">
         <div className="flex justify-center mb-6">
           <DollarIcon size={64} absoluteStrokeWidth={false} />
@@ -46,7 +48,7 @@ export default function SignUpPage() {
           className="text-2xl font-bold text-center mb-2"
           style={{ color: "#2563eb" }}
         >
-          CashTrack
+          RECashTrack
         </h1>
         <p className="text-sm text-gray-600 text-center mb-6">
           Create an account to start using <i>CashTrack</i>
@@ -65,17 +67,29 @@ export default function SignUpPage() {
             />
           </div>
 
-          <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
+          <div className="relative flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
             <PasswordIcon />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full ml-3 outline-none"
+              className="w-full ml-3 outline-none pr-10"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 p-1 text-gray-500 hover:text-gray-700"
+            >
+              {showPassword ? (
+                <Eye size={18} color="#2563eb" />
+              ) : (
+                <EyeOff size={18} />
+              )}
+            </button>
           </div>
 
           <button
@@ -96,8 +110,8 @@ export default function SignUpPage() {
         </form>
 
         <p className="text-center text-sm text-gray-600 mt-6">
-          Already have an account?{" "}
-          <a href="/signin" className="text-blue-600">
+          Already have an account?
+          <a href="/signin" className="text-blue-600 ml-1">
             <u>Sign In</u>
           </a>
         </p>

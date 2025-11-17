@@ -1,59 +1,37 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { MoveLeft, ArrowRight, ArrowDown, Ban } from "lucide-react";
+import { toast } from "react-hot-toast";
 import FamilyIcon from "./FamilyIcon";
 
 export default function FamilySettings({ user }) {
   const [view, setView] = useState("initial");
   const [createdFamilies, setCreatedFamilies] = useState([]);
   const [joinedFamilies, setJoinedFamilies] = useState([]);
-  const [actionLoading, setActionLoading] = useState(false);
   const [joinName, setJoinName] = useState("");
   const [createName, setCreateName] = useState("");
   const [leaveId, setLeaveId] = useState("");
   const [dissolveId, setDissolveId] = useState("");
-  const [toast, setToast] = useState(null);
-  const toastTimerRef = useRef(null);
-
-  function showToast(message) {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
-    }
-    setToast({ message });
-    toastTimerRef.current = setTimeout(() => {
-      setToast(null);
-      toastTimerRef.current = null;
-    }, 2000);
-  }
+  const [isJoining, setIsJoining] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [isDissolving, setIsDissolving] = useState(false);
 
   function totalFamiliesCount() {
-    const ids = new Set();
-    if (Array.isArray(createdFamilies)) {
-      createdFamilies.forEach((f) => {
-        if (f && f.id != null) ids.add(String(f.id));
-      });
-    }
-    if (Array.isArray(joinedFamilies)) {
-      joinedFamilies.forEach((f) => {
-        if (f && f.id != null) ids.add(String(f.id));
-      });
-    }
-    return ids.size;
+    return createdFamilies.length + joinedFamilies.length;
   }
 
   useEffect(() => {
-    if (!user || !user.id) return;
+    if (!user) {
+      return;
+    }
     fetchFamilies();
-    setLeaveId("");
-    setDissolveId("");
-  }, [user?.id]);
+  }, [user]);
 
   async function fetchFamilies() {
-    setActionLoading(true);
     try {
-      let url = `https://rct-api-iia5.onrender.com/api/family?userId=${user.id}`;
+      let url = `http://localhost:5050/api/family?userId=${user.id}`;
       const res = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -68,25 +46,21 @@ export default function FamilySettings({ user }) {
       setJoinedFamilies(data.joinedFamilies);
     } catch (err) {
       console.error(err);
-    } finally {
-      setActionLoading(false);
     }
   }
 
   async function handleJoin(e) {
     e.preventDefault();
     if (joinName.length !== 10) {
-      showToast("Family name must be 10 characters");
       return;
     }
     if (totalFamiliesCount() >= 3) {
-      showToast("Max families reached. (3 max)");
       return;
     }
 
-    setActionLoading(true);
+    setIsJoining(true);
     try {
-      let url = `https://rct-api-iia5.onrender.com/api/family?userId=${user.id}`;
+      let url = `http://localhost:5050/api/family/join?userId=${user.id}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -99,28 +73,25 @@ export default function FamilySettings({ user }) {
       }
       setJoinName("");
       await fetchFamilies();
-      showToast("Joined family");
     } catch (err) {
       console.error(err);
     } finally {
-      setActionLoading(false);
+      setIsJoining(false);
     }
   }
 
   async function handleCreate(e) {
     e.preventDefault();
     if (createName.length !== 10) {
-      showToast("Family name must be 10 characters");
       return;
     }
     if (totalFamiliesCount() >= 3) {
-      showToast("Max families reached. (3 max)");
       return;
     }
 
-    setActionLoading(true);
+    setIsCreating(true);
     try {
-      let url = `https://rct-api-iia5.onrender.com/api/family?userId=${user.id}`;
+      let url = `http://localhost:5050/api/family/create?userId=${user.id}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -133,19 +104,19 @@ export default function FamilySettings({ user }) {
       }
       setCreateName("");
       await fetchFamilies();
-      showToast("Family created");
+      toast.success("Family created");
     } catch (err) {
       console.error(err);
     } finally {
-      setActionLoading(false);
+      setIsCreating(false);
     }
   }
 
   async function handleLeave() {
     if (!leaveId) return;
-    setActionLoading(true);
+    setIsLeaving(true);
     try {
-      let url = `https://rct-api-iia5.onrender.com/api/family/${leaveId}?userId=${user.id}`;
+      let url = `http://localhost:5050/api/family/${leaveId}?userId=${user.id}`;
       const res = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -157,18 +128,19 @@ export default function FamilySettings({ user }) {
       }
       setLeaveId("");
       await fetchFamilies();
-      showToast("Left family");
     } catch (err) {
       console.error(err);
     } finally {
-      setActionLoading(false);
+      setIsLeaving(false);
     }
   }
 
   async function handleDissolve() {
     /** Just in case checks */
     if (!dissolveId) return;
-    const familyToDissolve = createdFamilies.find((f) => f.id === dissolveId);
+    const familyToDissolve = createdFamilies.find(
+      (family) => family.id == dissolveId
+    );
     if (!familyToDissolve) return;
 
     const confirmed = window.confirm(
@@ -176,9 +148,9 @@ export default function FamilySettings({ user }) {
     );
     if (!confirmed) return;
 
-    setActionLoading(true);
+    setIsDissolving(true);
     try {
-      let url = `https://rct-api-iia5.onrender.com/api/family/${dissolveId}?userId=${user.id}`;
+      let url = `http://localhost:5050/api/family/${dissolveId}?userId=${user.id}`;
       const res = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -190,25 +162,20 @@ export default function FamilySettings({ user }) {
       }
       setDissolveId("");
       await fetchFamilies();
-      showToast("Family dissolved");
     } catch (err) {
       console.error(err);
     } finally {
-      setActionLoading(false);
+      setIsDissolving(false);
     }
   }
 
-  function canLeave(family) {
-    return !createdFamilies.some((cf) => cf.id === family.id);
-  }
-
-  const leaveableFamilies = joinedFamilies.filter(canLeave);
+  const leaveableFamilies = joinedFamilies;
   const totalCount = totalFamiliesCount();
 
   return (
     <div className="w-full flex justify-center">
       <div className="w-full max-w-2xl mx-4">
-        <div className="relative bg-white rounded-2xl shadow-lg border border-gray-100 p-4 min-h-[60vh]">
+        <div className="relative bg-white rounded-lg shadow-lg border border-gray-100 p-4 min-h-[54vh]">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               {view !== "initial" && (
@@ -251,7 +218,7 @@ export default function FamilySettings({ user }) {
                   {/* Join/Create */}
                   <div
                     onClick={() => setView("joincreate")}
-                    className="cursor-pointer p-6 rounded-xl bg-transparent border-2 border-blue-500 text-blue-600 min-h-[140px] flex flex-col hover:shadow-md transition-shadow"
+                    className="cursor-pointer p-6 rounded-lg bg-transparent border-2 border-blue-500 text-blue-600 min-h-[140px] flex flex-col hover:shadow-md transition-shadow"
                   >
                     <p className="text-sm text-blue-600/90 mb-3 text-start font-semibold">
                       Join an existing family by name, or create a new family.
@@ -317,13 +284,11 @@ export default function FamilySettings({ user }) {
                     <button
                       type="submit"
                       disabled={
-                        actionLoading ||
-                        totalCount >= 3 ||
-                        joinName.length !== 10
+                        isJoining || totalCount >= 3 || joinName.length !== 10
                       }
                       className="min-w-[140px] sm:min-w-[160px] py-3 bg-blue-600 text-white rounded-md disabled:opacity-60 text-center font-medium font-semibold"
                     >
-                      {actionLoading ? "Joining…" : "Join"}
+                      {isJoining ? "Joining…" : "Join"}
                     </button>
                   </form>
 
@@ -352,20 +317,20 @@ export default function FamilySettings({ user }) {
                       onChange={(e) => setCreateName(e.target.value)}
                       className="flex-1 px-3 py-2 border rounded-md"
                       placeholder="Eg: xxx1xxx"
-                      disabled={actionLoading || totalCount >= 3}
+                      disabled={isCreating || totalCount >= 3}
                       minLength="10"
                       maxLength="10"
                     />
                     <button
                       type="submit"
                       disabled={
-                        actionLoading ||
+                        isCreating ||
                         totalCount >= 3 ||
                         createName.length !== 10
                       }
                       className="min-w-[140px] sm:min-w-[160px] py-3 bg-green-600 text-white rounded-md disabled:opacity-60 text-center font-medium font-semibold"
                     >
-                      {actionLoading ? "Creating…" : "Create"}
+                      {isCreating ? "Creating…" : "Create"}
                     </button>
                   </form>
 
@@ -373,7 +338,9 @@ export default function FamilySettings({ user }) {
                     <p className="mt-2 text-sm text-gray-500">
                       You created:{" "}
                       <strong>
-                        {createdFamilies.map((f) => f.name).join(", ")}
+                        {createdFamilies
+                          .map((family) => family.name)
+                          .join(", ")}
                       </strong>
                     </p>
                   )}
@@ -409,16 +376,16 @@ export default function FamilySettings({ user }) {
 
                     <button
                       onClick={handleLeave}
-                      disabled={!leaveId || actionLoading}
+                      disabled={!leaveId || isLeaving}
                       className="min-w-[140px] sm:min-w-[160px] py-3 bg-red-600 text-white rounded-md disabled:opacity-60 text-center font-medium font-semibold"
                     >
-                      {actionLoading ? "Leaving…" : "Leave"}
+                      {isLeaving ? "Leaving…" : "Leave"}
                     </button>
                   </div>
 
                   {leaveableFamilies.length === 0 && (
                     <p className="mt-2 text-sm text-gray-500">
-                      You are not a member of any other family.
+                      You are not a member of any other family besides your own.
                     </p>
                   )}
                 </section>
@@ -451,11 +418,11 @@ export default function FamilySettings({ user }) {
                       disabled={
                         createdFamilies.length === 0 ||
                         !dissolveId ||
-                        actionLoading
+                        isDissolving
                       }
                       className="min-w-[140px] sm:min-w-[160px] py-3 bg-red-700 text-white rounded-md disabled:opacity-60 text-center font-medium font-semibold"
                     >
-                      {actionLoading ? "Dissolving…" : "Dissolve"}
+                      {isDissolving ? "Dissolving…" : "Dissolve"}
                     </button>
                   </div>
 
@@ -468,14 +435,6 @@ export default function FamilySettings({ user }) {
               </div>
             )}
           </div>
-
-          {toast && (
-            <div className="pointer-events-none absolute left-1/2 transform -translate-x-1/2 bottom-4">
-              <div className="px-4 py-2 rounded-full bg-black bg-opacity-80 text-white text-sm">
-                {toast.message}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
