@@ -1,11 +1,12 @@
 "use client";
 
-import FamilySettings from "@/components/FamilySettings";
 import { useAuth } from "../../utils/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Topbar from "@/components/Topbar";
+import Sidebar from "@/components/Sidebar";
 
-export default function Family() {
+export default function FamilyPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -23,5 +24,16 @@ export default function Family() {
     return null;
   }
 
-  return <FamilySettings user={user} />;
+  return (
+    <>
+      <Topbar />
+      <div className="hidden md:flex">
+        <div className="flex w-full">
+          <aside className="flex-shrink-0 w-[clamp(12rem,14vw,16vw)] mt-[5vh] mr-6">
+            <Sidebar />
+          </aside>
+        </div>
+      </div>
+    </>
+  );
 }

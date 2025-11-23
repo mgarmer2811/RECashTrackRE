@@ -12,11 +12,11 @@ export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSignIn = async (e) => {
-    e.preventDefault();
+  const handleSignIn = async (event) => {
+    event.preventDefault();
     setErrorMsg("");
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -25,23 +25,22 @@ export default function SignInPage() {
     });
 
     if (error) {
-      setErrorMsg(error.message);
-      console.log("Error while loggin in: ", error.message);
+      setErrorMsg("Incorrect credentials / Email not confirmed");
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error while loggin in: ", error.message);
+      }
     } else {
       router.replace("/");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-xl border border-gray-200">
         <div className="flex justify-center mb-6">
           <DollarIcon size={64} absoluteStrokeWidth={false} />
         </div>
-        <h1
-          className="text-2xl font-bold text-center mb-2"
-          style={{ color: "#2563eb" }}
-        >
+        <h1 className="text-2xl font-bold text-center mb-2 text-blue-700">
           RECashTrack
         </h1>
         <p className="text-sm text-gray-600 text-center mb-6">
@@ -55,7 +54,7 @@ export default function SignInPage() {
               type="email"
               placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               required
               className="w-full ml-3 outline-none"
             />
@@ -66,13 +65,13 @@ export default function SignInPage() {
               type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               required
               className="w-full ml-3 outline-none pr-10"
             />
             <button
               type="button"
-              onClick={() => setShowPassword((s) => !s)}
+              onClick={() => setShowPassword((showPassword) => !showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute right-2 p-1 text-gray-500 hover:text-gray-700"
             >
@@ -94,9 +93,7 @@ export default function SignInPage() {
           </div>
 
           {errorMsg && (
-            <p className="text-red-500 text-sm text-center">
-              Incorrect credentials / Email not confirmed
-            </p>
+            <p className="text-red-500 text-sm text-center">{errorMsg}</p>
           )}
         </form>
 

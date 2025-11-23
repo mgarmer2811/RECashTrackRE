@@ -3,8 +3,10 @@
 import { useAuth } from "../../utils/AuthProvider";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Topbar from "@/components/Topbar";
+import Sidebar from "@/components/Sidebar";
 
-export default function Home() {
+export default function HomePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -22,5 +24,16 @@ export default function Home() {
     return null;
   }
 
-  return <p>Bienvenido usuario con pid:( {user.id} )</p>;
+  return (
+    <>
+      <Topbar />
+      <div className="hidden md:flex">
+        <div className="flex w-full">
+          <aside className="flex-shrink-0 w-[clamp(12rem,14vw,16vw)] mt-[5vh] mr-6">
+            <Sidebar />
+          </aside>
+        </div>
+      </div>
+    </>
+  );
 }

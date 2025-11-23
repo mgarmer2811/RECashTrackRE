@@ -9,18 +9,12 @@ import { Eye, EyeOff } from "lucide-react";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-
   const [newPassword, setNewPassword] = useState("");
   const [statusMsg, setStatusMsg] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      router.replace("/signin");
-      return;
-    }
-
     const hash = window.location.hash || "";
     const search = window.location.search || "";
     const hasToken =
@@ -37,17 +31,21 @@ export default function ResetPasswordPage() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         try {
-          const cleanUrl = window.location.pathname + window.location.search;
+          const cleanUrl = window.location.pathname;
           window.history.replaceState(null, "", cleanUrl);
-        } catch (e) {}
+        } catch (error) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("Browser error: ", error.message);
+          }
+        }
       }
     });
 
     return () => authListener.subscription.unsubscribe();
   }, [router]);
 
-  const handlePasswordReset = async (e) => {
-    e.preventDefault();
+  const handlePasswordReset = async (event) => {
+    event.preventDefault();
     setStatusMsg(null);
     setLoading(true);
 
@@ -58,27 +56,30 @@ export default function ResetPasswordPage() {
     setLoading(false);
 
     if (error) {
-      setStatusMsg({ type: "error", text: error.message });
+      if (process.env.NODE_ENV === "development") {
+        console.error("Reset password error: ", error.message);
+      }
+      setStatusMsg({
+        type: "error",
+        text: "An error occured while resetting your password.",
+      });
     } else {
       setStatusMsg({
         type: "success",
         text: "Password changed successfully! Redirecting...",
       });
 
-      setTimeout(() => router.replace("/signin"), 1500);
+      setTimeout(() => router.replace("/signin"), 1750);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-xl border border-gray-200">
         <div className="flex justify-center mb-6">
           <DollarIcon size={64} absoluteStrokeWidth={false} />
         </div>
-        <h1
-          className="text-2xl font-bold text-center mb-2"
-          style={{ color: "#2563eb" }}
-        >
+        <h1 className="text-2xl font-bold text-center mb-2 text-blue-700">
           RECashTrack
         </h1>
         <h2 className="text-lg font-bold text-center mb-2 text-gray-700">
@@ -95,14 +96,14 @@ export default function ResetPasswordPage() {
               type={showPassword ? "text" : "password"}
               placeholder="New password"
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
+              onChange={(event) => setNewPassword(event.target.value)}
               required
               minLength={6}
               className="w-full ml-3 outline-none pr-10"
             />
             <button
               type="button"
-              onClick={() => setShowPassword((s) => !s)}
+              onClick={() => setShowPassword((showPassword) => !showPassword)}
               aria-label={showPassword ? "Hide password" : "Show password"}
               className="absolute right-2 p-1 text-gray-500 hover:text-gray-700"
             >
@@ -125,7 +126,7 @@ export default function ResetPasswordPage() {
           {statusMsg && (
             <p
               className={`text-sm text-center ${
-                statusMsg.type === "error" ? "text-red-500" : "text-green-600"
+                statusMsg.type === "error" ? "text-red-500" : "text-blue-700"
               }`}
             >
               {statusMsg.text}

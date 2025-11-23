@@ -6,20 +6,22 @@ import supabase from "../../utils/SupabaseClient";
 import DollarIcon from "@/components/DollarIcon";
 import EmailIcon from "@/components/EmailIcon";
 import PasswordIcon from "@/components/PasswordIcon";
+import UserIcon from "@/components/UserIcon";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function SignUpPage() {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [statusMsg, setStatusMsg] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSignUp = async (e) => {
-    e.preventDefault();
+  const handleSignUp = async (event) => {
+    event.preventDefault();
     setLoading(true);
-    setErrorMsg("");
+    setStatusMsg(null);
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -28,26 +30,49 @@ export default function SignUpPage() {
 
     setLoading(false);
     if (error) {
-      setErrorMsg(error.message);
-      console.log("Error while signing up: ", error.message);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Sign up error: ", error);
+      }
+      setStatusMsg({
+        type: "error",
+        text: "An error occurred",
+      });
     } else {
-      alert(
-        "You've succesfully registered! Check your email to confirm your registration"
-      );
-      router.push("/signIn");
+      const user = data.user;
+      try {
+        let url = `http://localhost:5050/api/name/create?userId=${user.id}`;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: username }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message);
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === "development") {
+          console.error(error);
+        }
+      }
+
+      setStatusMsg({
+        text: "Check your inbox to confirm email.",
+      });
+      setTimeout(() => {
+        router.replace("/signin");
+      }, 1750);
     }
   };
 
   return (
-    <div className="min-h-[100svh] flex items-center justify-center bg-gray-50">
+    <div className="flex items-center justify-center">
       <div className="max-w-md w-full bg-white p-8 rounded-xl shadow-xl border border-gray-200">
         <div className="flex justify-center mb-6">
           <DollarIcon size={64} absoluteStrokeWidth={false} />
         </div>
-        <h1
-          className="text-2xl font-bold text-center mb-2"
-          style={{ color: "#2563eb" }}
-        >
+        <h1 className="text-2xl font-bold text-center mb-2 text-blue-700">
           RECashTrack
         </h1>
         <p className="text-sm text-gray-600 text-center mb-6">
@@ -56,12 +81,24 @@ export default function SignUpPage() {
 
         <form onSubmit={handleSignUp} className="space-y-5">
           <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
+            <UserIcon />
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              required
+              className="w-full ml-3 outline-none"
+            />
+          </div>
+
+          <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
             <EmailIcon />
             <input
               type="email"
               placeholder="Email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               required
               className="w-full ml-3 outline-none"
             />
@@ -73,7 +110,7 @@ export default function SignUpPage() {
               type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               required
               minLength={6}
               className="w-full ml-3 outline-none pr-10"
@@ -104,8 +141,10 @@ export default function SignUpPage() {
             {loading ? "Signing Up..." : "Sign Up"}
           </button>
 
-          {errorMsg && (
-            <p className="text-red-500 text-sm text-center">An error ocurred</p>
+          {statusMsg && (
+            <p className="text-sm text-center text-blue-700">
+              {statusMsg.text}
+            </p>
           )}
         </form>
 
