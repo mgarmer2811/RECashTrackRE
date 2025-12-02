@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import FamilySettings from "@/components/FamilySettings";
 import SignOut from "@/components/SignOut";
-import ChangeName from "@/components/changeName";
+import ChangeName from "@/components/ChangeName";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import MobileAccordion from "@/components/MobileAccordion";
@@ -22,10 +22,6 @@ export default function SettingsPage() {
 
   if (loading) {
     return <p>Loading user info...</p>;
-  }
-
-  if (!user) {
-    return null;
   }
 
   const panels = [
@@ -65,8 +61,8 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex-1 flex justify-center">
-            <div className="w-full max-w-6xl my-[5vh] h-[calc(100vh-10vh)] overflow-auto bg-white rounded rounded-lg shadow shadow-lg">
-              <div className="p-6 flex flex-col gap-6">
+            <div className="w-full max-w-6xl mt-[5vh] h-[calc(100vh-10vh)] overflow-auto">
+              <div className="flex flex-col gap-6">
                 <div>
                   <FamilySettings user={user} />
                 </div>
