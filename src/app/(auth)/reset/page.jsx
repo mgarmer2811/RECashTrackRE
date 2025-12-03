@@ -90,7 +90,7 @@ export default function ResetPasswordPage() {
         </p>
 
         <form onSubmit={handlePasswordReset} className="space-y-5">
-          <div className="relative flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
+          <div className="relative flex items-center border border-gray-300 rounded-md px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
             <PasswordIcon />
             <input
               type={showPassword ? "text" : "password"}
@@ -118,7 +118,7 @@ export default function ResetPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 rounded-lg text-white font-bold bg-blue-600 hover:bg-blue-700"
+            className="w-full py-2 rounded-md text-white font-bold bg-blue-600 hover:bg-blue-700"
           >
             {loading ? "Updating..." : "Update password"}
           </button>

@@ -4,18 +4,10 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { io } from "socket.io-client";
 import { showError } from "@/app/utils/Toast";
 import TransactionCard from "./TransactionCard";
-import { Pencil, FunnelX, X, Funnel } from "lucide-react";
-import { CATEGORY_MAP } from "@/app/utils/Utils";
+import { FunnelX, X, Funnel } from "lucide-react";
 
-const ALLOWED_CATEGORIES = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-const EXPENSE_CATEGORIES = [1, 2, 3, 4, 5, 6, 7, 8];
-const SAVING_CATEGORY = 9;
-
-function parseDateOnly(value) {
-  if (!value) return null;
-  const d = new Date(value + "T00:00:00");
-  return isNaN(d.getTime()) ? null : d;
-}
+const DEPOSIT_CATEGORY = 10;
+const WITHDRAW_CATEGORY = 11;
 
 function FilterButton({ active, onClick, children, title }) {
   return (
@@ -31,29 +23,18 @@ function FilterButton({ active, onClick, children, title }) {
   );
 }
 
-export default function TransactionRenderer({ userId }) {
+export default function ContributionRenderer({ userId }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const [appliedTimeFilter, setAppliedTimeFilter] = useState("all");
-  const [appliedCustomStart, setAppliedCustomStart] = useState("");
-  const [appliedCustomEnd, setAppliedCustomEnd] = useState("");
-  const [appliedTypeFilter, setAppliedTypeFilter] = useState("all");
-  const [appliedSelectedCategory, setAppliedSelectedCategory] = useState(null);
+  const [appliedTypeFilter, setAppliedTypeFilter] = useState(null);
   const [appliedMinQuantity, setAppliedMinQuantity] = useState(null);
   const [appliedMaxQuantity, setAppliedMaxQuantity] = useState(null);
 
-  const [draftTimeFilter, setDraftTimeFilter] = useState(appliedTimeFilter);
-  const [draftCustomStart, setDraftCustomStart] = useState(appliedCustomStart);
-  const [draftCustomEnd, setDraftCustomEnd] = useState(appliedCustomEnd);
-  const [draftTypeFilter, setDraftTypeFilter] = useState(appliedTypeFilter);
-  const [draftSelectedCategory, setDraftSelectedCategory] = useState(
-    appliedSelectedCategory
-  );
-
+  const [draftTypeFilter, setDraftTypeFilter] = useState(null);
   const [draftMinQuantity, setDraftMinQuantity] = useState(0);
   const [draftMaxQuantity, setDraftMaxQuantity] = useState(500);
   const [draftMinUnlimited, setDraftMinUnlimited] = useState(true);
@@ -89,7 +70,10 @@ export default function TransactionRenderer({ userId }) {
 
         const data = await res.json();
         if (!signal.aborted) {
-          setTransactions(data.transactions ?? []);
+          const filtered = (data.transactions ?? []).filter(
+            (t) => t.type === true
+          );
+          setTransactions(filtered);
         }
       } catch (error) {
         if (signal.aborted) return;
@@ -112,14 +96,12 @@ export default function TransactionRenderer({ userId }) {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      if (process.env.NODE_ENV === "development")
-        console.log("Socket connected", socket.id);
       socket.emit("join", { userId });
     });
 
     socket.on("transaction:created", (payload) => {
       const { transaction } = payload || {};
-      if (!transaction) return;
+      if (!transaction || transaction.type !== true) return;
 
       setTransactions((ts) => {
         const exists = ts.some((t) => t.id === transaction.id);
@@ -130,7 +112,7 @@ export default function TransactionRenderer({ userId }) {
 
     socket.on("transaction:updated", (payload) => {
       const { transaction } = payload || {};
-      if (!transaction) return;
+      if (!transaction || transaction.type !== true) return;
       const id = Number(transaction.id);
       if (!id) return;
 
@@ -150,11 +132,6 @@ export default function TransactionRenderer({ userId }) {
       setTransactions((ts) => ts.filter((t) => t.id !== transactionId));
     });
 
-    socket.on("disconnect", (reason) => {
-      if (process.env.NODE_ENV === "development")
-        console.warn("Socket disconnected. Reason: ", reason);
-    });
-
     return () => {
       try {
         if (socketRef.current && socketRef.current.connected) {
@@ -168,148 +145,65 @@ export default function TransactionRenderer({ userId }) {
   }, [userId]);
 
   const onUpdate = async (transactionId, data) => {
-    const baseUrl = process.env.UPDATE_TRANSACTION;
-    const url = baseUrl
-      ? `${baseUrl}${transactionId}?userId=${userId}`
-      : `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
-    try {
-      const res = await fetch(url, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message);
-      }
-      return await res.json();
-    } catch (err) {
-      throw err;
+    const url = `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message);
     }
+    return await res.json();
   };
 
   const onDelete = async (transactionId) => {
-    const baseUrl = process.env.DELETE_TRANSACTION;
-    const url = baseUrl
-      ? `${baseUrl}${transactionId}?userId=${userId}`
-      : `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;
-    try {
-      const res = await fetch(url, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message);
-      }
-      return true;
-    } catch (err) {
-      throw err;
+    const url = `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message);
     }
+    return true;
   };
 
   const isFilterApplied = useMemo(() => {
-    const noCustomDates = !appliedCustomStart && !appliedCustomEnd;
-    const noSelectedCategory =
-      appliedSelectedCategory === null || appliedSelectedCategory === undefined;
     const noQuantityLimits =
       (appliedMinQuantity === null || appliedMinQuantity === undefined) &&
       (appliedMaxQuantity === null || appliedMaxQuantity === undefined);
-    return !(
-      appliedTimeFilter === "all" &&
-      noCustomDates &&
-      appliedTypeFilter === "all" &&
-      noSelectedCategory &&
-      noQuantityLimits
-    );
-  }, [
-    appliedTimeFilter,
-    appliedCustomStart,
-    appliedCustomEnd,
-    appliedTypeFilter,
-    appliedSelectedCategory,
-    appliedMinQuantity,
-    appliedMaxQuantity,
-  ]);
+    return !(appliedTypeFilter === null && noQuantityLimits);
+  }, [appliedTypeFilter, appliedMinQuantity, appliedMaxQuantity]);
 
   const filteredTransactions = useMemo(() => {
-    if (!transactions || transactions.length === 0) return [];
+    return transactions.filter((t) => {
+      if (appliedTypeFilter === "deposit") {
+        if (Number(t.category) !== DEPOSIT_CATEGORY) return false;
+      } else if (appliedTypeFilter === "withdraw") {
+        if (Number(t.category) !== WITHDRAW_CATEGORY) return false;
+      }
 
-    const now = new Date();
-    let startDate = null;
-    let endDate = null;
+      const q = Number(t.quantity);
+      if (!Number.isFinite(q)) return false;
+      if (
+        appliedMinQuantity !== null &&
+        appliedMinQuantity !== undefined &&
+        q < appliedMinQuantity
+      )
+        return false;
+      if (
+        appliedMaxQuantity !== null &&
+        appliedMaxQuantity !== undefined &&
+        q > appliedMaxQuantity
+      )
+        return false;
 
-    if (appliedTimeFilter === "1week") {
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - 7);
-      endDate = now;
-    } else if (appliedTimeFilter === "1month") {
-      startDate = new Date(now);
-      startDate.setMonth(now.getMonth() - 1);
-      endDate = now;
-    } else if (appliedTimeFilter === "1year") {
-      startDate = new Date(now);
-      startDate.setFullYear(now.getFullYear() - 1);
-      endDate = now;
-    } else if (appliedTimeFilter === "custom") {
-      const s = parseDateOnly(appliedCustomStart);
-      const e = parseDateOnly(appliedCustomEnd);
-      if (s) startDate = new Date(s.setHours(0, 0, 0, 0));
-      if (e) endDate = new Date(e.setHours(23, 59, 59, 999));
-    } else if (appliedTimeFilter === "all") {
-      startDate = null;
-      endDate = null;
-    }
-
-    return transactions
-      .filter((t) => {
-        const cat = Number(t.category);
-        return ALLOWED_CATEGORIES.includes(cat);
-      })
-      .filter((t) => {
-        const d = new Date(t.created_at);
-        if (startDate && d < startDate) return false;
-        if (endDate && d > endDate) return false;
-
-        if (appliedTypeFilter === "expense") {
-          if (!EXPENSE_CATEGORIES.includes(Number(t.category))) return false;
-          if (
-            appliedSelectedCategory &&
-            Number(appliedSelectedCategory) !== Number(t.category)
-          )
-            return false;
-        } else if (appliedTypeFilter === "saving") {
-          if (Number(t.category) !== SAVING_CATEGORY) return false;
-        }
-
-        const q = Number(t.quantity);
-        if (!Number.isFinite(q)) return false;
-        if (
-          appliedMinQuantity !== null &&
-          appliedMinQuantity !== undefined &&
-          q < appliedMinQuantity
-        )
-          return false;
-        if (
-          appliedMaxQuantity !== null &&
-          appliedMaxQuantity !== undefined &&
-          q > appliedMaxQuantity
-        )
-          return false;
-
-        return true;
-      });
-  }, [
-    transactions,
-    appliedTimeFilter,
-    appliedCustomStart,
-    appliedCustomEnd,
-    appliedTypeFilter,
-    appliedSelectedCategory,
-    appliedMinQuantity,
-    appliedMaxQuantity,
-  ]);
+      return true;
+    });
+  }, [transactions, appliedTypeFilter, appliedMinQuantity, appliedMaxQuantity]);
 
   const sliderMax = useMemo(() => {
     const maxQ =
@@ -322,11 +216,7 @@ export default function TransactionRenderer({ userId }) {
 
   useEffect(() => {
     if (isFilterOpen) {
-      setDraftTimeFilter(appliedTimeFilter);
-      setDraftCustomStart(appliedCustomStart);
-      setDraftCustomEnd(appliedCustomEnd);
       setDraftTypeFilter(appliedTypeFilter);
-      setDraftSelectedCategory(appliedSelectedCategory);
 
       setDraftMinUnlimited(
         appliedMinQuantity === null || appliedMinQuantity === undefined
@@ -349,22 +239,14 @@ export default function TransactionRenderer({ userId }) {
     }
   }, [
     isFilterOpen,
-    appliedTimeFilter,
-    appliedCustomStart,
-    appliedCustomEnd,
     appliedTypeFilter,
-    appliedSelectedCategory,
     appliedMinQuantity,
     appliedMaxQuantity,
     sliderMax,
   ]);
 
   const openFilters = () => {
-    setDraftTimeFilter(appliedTimeFilter);
-    setDraftCustomStart(appliedCustomStart);
-    setDraftCustomEnd(appliedCustomEnd);
     setDraftTypeFilter(appliedTypeFilter);
-    setDraftSelectedCategory(appliedSelectedCategory);
 
     setDraftMinUnlimited(
       appliedMinQuantity === null || appliedMinQuantity === undefined
@@ -398,21 +280,7 @@ export default function TransactionRenderer({ userId }) {
       max = tmp;
     }
 
-    setAppliedTimeFilter(draftTimeFilter ?? "all");
-    setAppliedCustomStart(draftCustomStart ?? "");
-    setAppliedCustomEnd(draftCustomEnd ?? "");
-    setAppliedTypeFilter(draftTypeFilter ?? "all");
-
-    if (draftTypeFilter === "saving") {
-      setAppliedSelectedCategory(SAVING_CATEGORY);
-    } else if (draftTypeFilter === "expense") {
-      setAppliedSelectedCategory(
-        draftSelectedCategory ? Number(draftSelectedCategory) : null
-      );
-    } else {
-      setAppliedSelectedCategory(null);
-    }
-
+    setAppliedTypeFilter(draftTypeFilter ?? null);
     setAppliedMinQuantity(min !== null ? Number(min) : null);
     setAppliedMaxQuantity(max !== null ? Number(max) : null);
 
@@ -420,30 +288,13 @@ export default function TransactionRenderer({ userId }) {
   };
 
   const handleClearDrafts = () => {
-    setDraftTimeFilter("all");
-    setDraftCustomStart("");
-    setDraftCustomEnd("");
-    setDraftTypeFilter("all");
-    setDraftSelectedCategory(null);
-
+    setDraftTypeFilter(null);
     setDraftMinUnlimited(true);
     setDraftMaxUnlimited(true);
     setDraftMinQuantity(0);
     setDraftMaxQuantity(sliderMax);
   };
 
-  useEffect(() => {
-    if (draftTypeFilter === "all") {
-      setDraftSelectedCategory(null);
-    } else if (draftTypeFilter === "saving") {
-      setDraftSelectedCategory(SAVING_CATEGORY);
-    } else if (draftTypeFilter === "expense") {
-      const expenseOptions = EXPENSE_CATEGORIES;
-      if (!expenseOptions.includes(Number(draftSelectedCategory))) {
-        setDraftSelectedCategory(null);
-      }
-    }
-  }, [draftTypeFilter]);
   useEffect(() => {
     if (draftMaxQuantity > sliderMax) setDraftMaxQuantity(sliderMax);
     if (draftMinQuantity > sliderMax) setDraftMinQuantity(sliderMax);
@@ -456,7 +307,7 @@ export default function TransactionRenderer({ userId }) {
       <div className="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-700 pt-1">
-            Operations History
+            Contributions History
           </h3>
           <span className="text-sm text-slate-500">
             {filteredTransactions.length} item(s)
@@ -500,51 +351,6 @@ export default function TransactionRenderer({ userId }) {
                 >
                   <X size={20} />
                 </button>
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <div className="text-sm font-medium text-gray-600 mb-2">
-                Date range
-              </div>
-
-              <div className="flex gap-1">
-                {[
-                  { key: "1week", label: "1W" },
-                  { key: "1month", label: "1M" },
-                  { key: "1year", label: "1Y" },
-                  { key: "custom", label: "custom" },
-                ].map((r) => {
-                  const isActive = draftTimeFilter === r.key;
-                  return (
-                    <FilterButton
-                      key={r.key}
-                      active={isActive}
-                      onClick={() => setDraftTimeFilter(r.key)}
-                      title={r.key === "custom" ? "Custom" : r.label}
-                    >
-                      {r.key === "custom" ? <Pencil size={14} /> : r.label}
-                    </FilterButton>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 flex items-center gap-2">
-                <input
-                  type="date"
-                  value={draftCustomStart}
-                  onChange={(e) => setDraftCustomStart(e.target.value)}
-                  className="w-36 px-2 py-1 border rounded"
-                  disabled={draftTimeFilter !== "custom"}
-                />
-                <span className="text-sm text-slate-500">—</span>
-                <input
-                  type="date"
-                  value={draftCustomEnd}
-                  onChange={(e) => setDraftCustomEnd(e.target.value)}
-                  className="w-36 px-2 py-1 border rounded"
-                  disabled={draftTimeFilter !== "custom"}
-                />
               </div>
             </div>
 
@@ -635,73 +441,28 @@ export default function TransactionRenderer({ userId }) {
 
               <div className="flex gap-1 items-center">
                 <FilterButton
-                  active={draftTypeFilter === "all"}
-                  onClick={() => setDraftTypeFilter("all")}
+                  active={draftTypeFilter === null}
+                  onClick={() => setDraftTypeFilter(null)}
                   title="All"
                 >
                   All
                 </FilterButton>
 
                 <FilterButton
-                  active={draftTypeFilter === "expense"}
-                  onClick={() => setDraftTypeFilter("expense")}
-                  title="Expenses"
+                  active={draftTypeFilter === "deposit"}
+                  onClick={() => setDraftTypeFilter("deposit")}
+                  title="Deposits"
                 >
-                  Expense
+                  Deposit
                 </FilterButton>
 
                 <FilterButton
-                  active={draftTypeFilter === "saving"}
-                  onClick={() => setDraftTypeFilter("saving")}
-                  title="Savings"
+                  active={draftTypeFilter === "withdraw"}
+                  onClick={() => setDraftTypeFilter("withdraw")}
+                  title="Withdrawals"
                 >
-                  Saving
+                  Withdrawal
                 </FilterButton>
-              </div>
-            </div>
-
-            <div className="border-t my-4" />
-
-            <div className="mb-2">
-              <div className="text-sm font-medium text-gray-600 mb-2">
-                Category
-              </div>
-
-              <div className="flex items-center gap-2">
-                <select
-                  value={draftSelectedCategory ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setDraftSelectedCategory(v ? Number(v) : null);
-                  }}
-                  className="px-2 py-1 border rounded text-sm"
-                  disabled={
-                    draftTypeFilter === "all" || draftTypeFilter === "saving"
-                  }
-                >
-                  {draftTypeFilter === "all" && (
-                    <option value="">All categories</option>
-                  )}
-
-                  {draftTypeFilter === "expense" && (
-                    <>
-                      <option value="">All expenses</option>
-                      {EXPENSE_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {CATEGORY_MAP?.[cat]?.name ?? `Category ${cat}`}
-                        </option>
-                      ))}
-                    </>
-                  )}
-
-                  {draftTypeFilter === "saving" && (
-                    <>
-                      <option value={SAVING_CATEGORY}>
-                        {CATEGORY_MAP?.[SAVING_CATEGORY]?.name ?? `Saving`}
-                      </option>
-                    </>
-                  )}
-                </select>
               </div>
             </div>
 
@@ -729,7 +490,7 @@ export default function TransactionRenderer({ userId }) {
       <div className="w-full space-y-3 p-1 mt-4 overflow-y-auto flex-1 ">
         {filteredTransactions.length === 0 ? (
           <p className="text-sm text-slate-500">
-            No transactions for selected filters.
+            No contributions for selected filters.
           </p>
         ) : (
           filteredTransactions

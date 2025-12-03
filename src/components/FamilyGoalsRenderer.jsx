@@ -27,7 +27,10 @@ export default function FamilyGoalsRenderer({ userId }) {
     const fetchFamiliesAndGoals = async () => {
       setLoading(true);
       try {
-        const url = `http://localhost:5050/api/family/get?userId=${userId}`;
+        const baseUrl = process.env.GET_FAMILIES;
+        const url = baseUrl
+          ? `${baseUrl}?userId=${userId}`
+          : `http://localhost:5050/api/family/get?userId=${userId}`;
 
         const res = await fetch(url, {
           method: "GET",
@@ -50,10 +53,11 @@ export default function FamilyGoalsRenderer({ userId }) {
 
         const promises = unifiedFamilies.map(async (family) => {
           try {
-            const res = await fetch(
-              `http://localhost:5050/api/goals/get?familyId=${family.id}&userId=${userId}`,
-              { signal }
-            );
+            const baseUrl = process.env.GET_GOALS;
+            const url = baseUrl
+              ? `${baseUrl}?familyId=${family.id}&userId=${userId}`
+              : `http://localhost:5050/api/goals/get?familyId=${family.id}&userId=${userId}`;
+            const res = await fetch(url, { signal });
             if (!res.ok) {
               return { goals: [] };
             }
@@ -335,7 +339,10 @@ export default function FamilyGoalsRenderer({ userId }) {
   }, [selectedFamilyId]);
 
   const onUpdate = async (goalId, data) => {
-    const url = `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}&familyId=${selectedFamilyId}`;
+    const baseUrl = process.env.UPDATE_GOAL;
+    const url = baseUrl
+      ? `${baseUrl}${goaldId}?userId=${userId}&familyId=${selectedFamilyId}`
+      : `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}&familyId=${selectedFamilyId}`;
     try {
       const res = await fetch(url, {
         method: "PATCH",
@@ -354,7 +361,10 @@ export default function FamilyGoalsRenderer({ userId }) {
   };
 
   const onDelete = async (goalId) => {
-    const url = `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}`;
+    const baseUrl = process.env.DELETE_GOAL;
+    const url = baseUrl
+      ? `${baseUrl}${goalId}?userId=${userId}`
+      : `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}`;
     try {
       const res = await fetch(url, {
         method: "DELETE",

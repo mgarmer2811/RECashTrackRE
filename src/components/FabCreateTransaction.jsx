@@ -55,7 +55,10 @@ export default function FabCreateTransaction({ userId }) {
       created_at: date,
     };
 
-    const url = `http://localhost:5050/api/transactions/create/?userId=${userId}`;
+    const baseUrl = process.env.CREATE_TRANSACTION;
+    const url = baseUrl
+      ? `${baseUrl}?userId=${userId}`
+      : `http://localhost:5050/api/transactions/create/?userId=${userId}`;
 
     try {
       const res = await fetch(url, {
@@ -88,7 +91,7 @@ export default function FabCreateTransaction({ userId }) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 p-2">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-xl mx-4 p-6 max-h-[80vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-700">

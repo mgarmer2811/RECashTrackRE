@@ -39,7 +39,10 @@ export default function CreateGoal({ userId }) {
 
     setLoading(true);
     try {
-      let url = `http://localhost:5050/api/goals/create?userId=${userId}`;
+      const baseUrl = process.env.CREATE_GOAL;
+      const url = baseUrl
+        ? `${baseUrl}?userId=${userId}`
+        : `http://localhost:5050/api/goals/create?userId=${userId}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -70,7 +73,7 @@ export default function CreateGoal({ userId }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-md bg-white shadow rounded-lg p-4 space-y-4"
+      className="w-full max-w-md bg-white shadow rounded-md p-4 space-y-4"
     >
       <h3 className="text-lg font-semibold">Create a goal</h3>
 

@@ -42,14 +42,14 @@ export default function TransactionCard({ transaction, onUpdate, onDelete }) {
 
   const amount = Number(transaction.quantity) || 0;
 
-  const isExpense = category >= 1 && category <= 8;
+  const isExpense = (category >= 1 && category <= 8) || category === 11;
   const sign = isExpense ? "-" : "+";
   const colorClass = isExpense ? "text-red-600" : "text-blue-600";
   const amountFormatted = `€${formatEuro(Math.abs(amount))}`;
 
   return (
     <>
-      <div className="relative bg-white shadow rounded-2xl p-4 w-full border border-gray-300">
+      <div className="relative bg-white shadow shadow-lg rounded-xl p-4 w-full border border-gray-300">
         <div className="absolute top-3 right-3">
           <button
             onClick={openModal}
@@ -62,7 +62,7 @@ export default function TransactionCard({ transaction, onUpdate, onDelete }) {
 
         <div className="flex items-center gap-3">
           <div
-            className="p-3 rounded-lg"
+            className="p-3 rounded-md"
             style={{
               background: `${cat.color}22`,
               border: `1px solid ${cat.color}`,

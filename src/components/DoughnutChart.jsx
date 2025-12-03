@@ -1,17 +1,39 @@
-import React, {
+import {
   useEffect,
   useMemo,
   useState,
   useRef,
   useCallback,
+  useLayoutEffect,
 } from "react";
-import { VictoryPie, VictoryTooltip } from "victory";
+import { VictoryPie, VictoryTooltip, VictoryContainer } from "victory";
 import { CATEGORY_MAP } from "../app/utils/Utils";
 
-export default function DoughnutChart({ userId, height = 300 }) {
+function FilterButton({ active, onClick, children, title }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`min-w-[44px] px-2 py-1 rounded-md text-sm font-semibold transition-colors flex items-center justify-center ${
+        active ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function DoughnutChart({ userId }) {
   const [transactions, setTransactions] = useState([]);
   const containerRef = useRef(null);
-  const [chartWidth, setChartWidth] = useState(0);
+
+  const calcInitialWidth = () => {
+    if (typeof window === "undefined") return 360;
+    return Math.min(450, Math.max(Math.round(window.innerWidth * 0.4), 180));
+  };
+
+  const [chartWidth, setChartWidth] = useState(() => calcInitialWidth());
+  const [range, setRange] = useState("1M");
 
   useEffect(() => {
     if (!userId) return;
@@ -20,7 +42,10 @@ export default function DoughnutChart({ userId, height = 300 }) {
 
     const fetchTransactions = async () => {
       try {
-        const url = `http://localhost:5050/api/transactions/get?userId=${userId}`;
+        const baseUrl = process.env.GET_TRANSACTIONS;
+        const url = baseUrl
+          ? `${baseUrl}?userId=${userId}`
+          : `http://localhost:5050/api/transactions/get?userId=${userId}`;
         const res = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -43,18 +68,46 @@ export default function DoughnutChart({ userId, height = 300 }) {
     return () => controller.abort();
   }, [userId]);
 
+  const getCutoff = useCallback((r) => {
+    if (!r) return null;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (r === "1W") {
+      cutoff.setDate(now.getDate() - 7);
+      return cutoff;
+    }
+    if (r === "1M") {
+      cutoff.setMonth(now.getMonth() - 1);
+      return cutoff;
+    }
+    if (r === "1Y") {
+      cutoff.setFullYear(now.getFullYear() - 1);
+      return cutoff;
+    }
+    return null;
+  }, []);
+
   const filtered = useMemo(() => {
+    const cutoff = getCutoff(range);
+
     return transactions.filter((t) => {
-      if (t.type !== false) {
-        return false;
-      }
+      if (t.type !== false) return false;
+
       const cat = Number(t.category);
       if (!Number.isFinite(cat)) return false;
       if (cat < 1 || cat > 8) return false;
 
+      if (cutoff) {
+        const raw = t.created_at;
+        if (!raw) return false;
+        const d = new Date(raw);
+        if (!(d instanceof Date) || isNaN(d.getTime())) return false;
+        if (d < cutoff) return false;
+      }
+
       return true;
     });
-  }, [transactions]);
+  }, [transactions, getCutoff, range]);
 
   const aggregated = useMemo(() => {
     const map = new Map();
@@ -75,60 +128,173 @@ export default function DoughnutChart({ userId, height = 300 }) {
       .sort((a, b) => b.y - a.y);
   }, [filtered]);
 
-  const handleResize = useCallback(() => {
-    if (containerRef.current) {
-      const parentWidth = containerRef.current.offsetWidth;
-      setChartWidth(Math.max(Math.round(parentWidth * 0.8), 180));
+  const total = useMemo(
+    () => aggregated.reduce((s, it) => s + (Number(it.y) || 0), 0),
+    [aggregated]
+  );
+
+  const formattedTotal = useMemo(() => {
+    try {
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(total);
+    } catch (e) {
+      return total.toFixed(2);
     }
+  }, [total]);
+
+  const handleResize = useCallback(() => {
+    const el = containerRef.current;
+    const parentWidth = el
+      ? el.clientWidth || el.getBoundingClientRect().width
+      : typeof window !== "undefined"
+      ? window.innerWidth
+      : 360;
+    const newWidth = Math.min(
+      450,
+      Math.max(Math.round(parentWidth * 0.9), 180)
+    );
+    setChartWidth((prev) => (prev === newWidth ? prev : newWidth));
   }, []);
 
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver(handleResize);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-
-    return () => resizeObserver.disconnect();
-  }, [handleResize]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleResize();
   }, [handleResize]);
 
-  if (!aggregated || aggregated.length === 0) return null;
+  useEffect(() => {
+    const ro = new ResizeObserver(() => handleResize());
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [handleResize]);
 
-  const chartHeight = Math.max(height, 180);
+  let chartHeight = Math.max(Math.round(chartWidth * 0.8), 180);
+  chartHeight = Math.min(chartHeight, 350);
+  const innerRadius = Math.round(Math.min(chartWidth, chartHeight) * 0.12);
+  const tooltipFontSize = useMemo(
+    () => Math.round(Math.max(10, Math.min(18, chartWidth / 25))),
+    [chartWidth]
+  );
+
+  if (!aggregated || aggregated.length === 0) return <p>No expenses found</p>;
 
   return (
     <div
       ref={containerRef}
-      style={{ width: "100%", height: chartHeight, position: "relative" }}
+      className="w-full bg-white rounded-xl shadow-lg p-4"
+      style={{ minHeight: 180 }}
     >
-      <VictoryPie
-        data={aggregated}
-        width={chartWidth}
-        height={chartHeight}
-        colorScale={aggregated.map((item) => item.color)}
-        labelComponent={
-          <VictoryTooltip
-            pointerLength={8}
-            cornerRadius={6}
-            flyoutStyle={{ fill: "#fff", stroke: "#ccc", padding: 8 }}
-            style={{ fill: "#333", fontSize: 12 }}
-            constrainToVisibleArea
-          />
-        }
-        labels={({ datum }) => `${datum.x}\n${Number(datum.y).toFixed(2)}`}
-        style={{
-          parent: { overflow: "visible" },
-          data: {
-            fill: ({ datum }) => datum.color,
-            stroke: "#fff",
-            strokeWidth: 1,
-          },
-          labels: { fontSize: 10 },
-        }}
-      />
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 pt-1">Expenses</h3>
+          <p className="text-sm text-gray-500 mt-1">
+            Total: <b>{formattedTotal}</b>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {[
+            { id: "1W", label: "1W" },
+            { id: "1M", label: "1M" },
+            { id: "1Y", label: "1Y" },
+          ].map((opt) => {
+            const selected = range === opt.id;
+            return (
+              <FilterButton
+                key={opt.id}
+                active={selected}
+                onClick={() => setRange(selected ? null : opt.id)}
+                title={opt.id}
+              >
+                {opt.label}
+              </FilterButton>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center md:gap-6">
+        <div style={{ width: "100%", maxWidth: 480 }} className="mx-auto">
+          <div
+            style={{
+              width: "100%",
+              height: chartHeight,
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <VictoryPie
+              data={aggregated}
+              width={chartWidth}
+              height={chartHeight}
+              padding={0}
+              innerRadius={innerRadius}
+              containerComponent={
+                <VictoryContainer
+                  responsive={false}
+                  style={{
+                    display: "block",
+                    margin: "0 auto",
+                    width: `${chartWidth}px`,
+                    height: `${chartHeight}px`,
+                  }}
+                />
+              }
+              origin={{ x: chartWidth / 2, y: chartHeight / 2 }}
+              colorScale={aggregated.map((item) => item.color)}
+              labelComponent={
+                <VictoryTooltip
+                  pointerLength={8}
+                  cornerRadius={6}
+                  flyoutStyle={{ fill: "#fff", stroke: "#e5e7eb", padding: 8 }}
+                  style={{ fill: "#111827", fontSize: tooltipFontSize }}
+                  constrainToVisibleArea
+                />
+              }
+              labels={({ datum }) => {
+                const value = Number(datum.y) || 0;
+                const pct =
+                  total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+                return `${datum.x}\n${value.toFixed(2)} (${pct}%)`;
+              }}
+              style={{
+                parent: { overflow: "visible" },
+                data: {
+                  fill: ({ datum }) => datum.color,
+                  stroke: "#fff",
+                  strokeWidth: 1,
+                },
+                labels: {
+                  fontSize: Math.max(10, Math.round(tooltipFontSize * 0.8)),
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 md:mt-0 md:flex-1">
+          <ul className="flex flex-wrap gap-2 text-[0.8rem]">
+            {aggregated.map((item) => {
+              return (
+                <li
+                  key={item.x}
+                  className="flex items-center gap-2 p-1 rounded-md truncate"
+                >
+                  <span
+                    className="w-3 h-3 rounded-sm inline-block flex-shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <span className="truncate max-w-[12rem] text-sm">
+                    {item.x}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

@@ -27,7 +27,10 @@ export default function FamilySettingsCard({ user }) {
 
   async function fetchFamilies() {
     try {
-      let url = `http://localhost:5050/api/family/get?userId=${user.id}`;
+      const baseUrl = process.env.GET_FAMILIES;
+      const url = baseUrl
+        ? `${baseUrl}?userId=${user.id}`
+        : `http://localhost:5050/api/family/get?userId=${user.id}`;
       const res = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -52,7 +55,10 @@ export default function FamilySettingsCard({ user }) {
     if (totalFamiliesCount() >= 3) return;
     setIsJoining(true);
     try {
-      let url = `http://localhost:5050/api/family/join?userId=${user.id}`;
+      const baseUrl = process.env.JOIN_FAMILY;
+      const url = baseUrl
+        ? `${baseUrl}?userId=${user.id}`
+        : `http://localhost:5050/api/family/join?userId=${user.id}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,7 +87,10 @@ export default function FamilySettingsCard({ user }) {
     if (totalFamiliesCount() >= 3) return;
     setIsCreating(true);
     try {
-      let url = `http://localhost:5050/api/family/create?userId=${user.id}`;
+      const baseUrl = process.env.CREATE_FAMILY;
+      const url = baseUrl
+        ? `${baseUrl}?userId=${user.id}`
+        : `http://localhost:5050/api/family/create?userId=${user.id}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,7 +117,10 @@ export default function FamilySettingsCard({ user }) {
     if (!leaveId) return;
     setIsLeaving(true);
     try {
-      let url = `http://localhost:5050/api/family/delete/${leaveId}?userId=${user.id}`;
+      const baseUrl = process.env.DELETE_FAMILY;
+      const url = baseUrl
+        ? `${baseUrl}${leaveId}?userId=${user.id}`
+        : `http://localhost:5050/api/family/delete/${leaveId}?userId=${user.id}`;
       const res = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -142,7 +154,10 @@ export default function FamilySettingsCard({ user }) {
     if (!confirmed) return;
     setIsDissolving(true);
     try {
-      let url = `http://localhost:5050/api/family/delete/${dissolveId}?userId=${user.id}`;
+      const baseUrl = process.env.DELETE_FAMILY;
+      const url = baseUrl
+        ? `${baseUrl}${leaveId}?userId=${user.id}`
+        : `http://localhost:5050/api/family/delete/${leaveId}?userId=${user.id}`;
       const res = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },

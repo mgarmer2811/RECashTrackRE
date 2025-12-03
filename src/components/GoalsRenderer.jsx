@@ -1,7 +1,24 @@
-import { useState, useEffect, useRef } from "react";
+"use client";
+
+import { useState, useEffect, useRef, useMemo } from "react";
 import GoalCard from "./GoalCard";
 import { io } from "socket.io-client";
 import { showSuccess, showError } from "@/app/utils/Toast";
+import { ShieldBan, Flame, CircleCheckBig } from "lucide-react";
+
+function FilterButton({ active, onClick, children, title }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`min-w-[44px] px-2 py-1 rounded-md text-sm font-semibold transition-colors flex items-center justify-center ${
+        active ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function GoalsRenderer({ userId }) {
   const [goals, setGoals] = useState([]);
@@ -9,6 +26,8 @@ export default function GoalsRenderer({ userId }) {
   const [percents, setPercents] = useState({});
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [showCompleted, setShowCompleted] = useState(false);
 
   useEffect(() => {
     if (!userId) {
@@ -23,7 +42,10 @@ export default function GoalsRenderer({ userId }) {
 
     const fetchGoals = async () => {
       try {
-        let url = `http://localhost:5050/api/goals/get?userId=${userId}`;
+        const baseUrl = process.env.GET_GOALS;
+        const url = baseUrl
+          ? `${baseUrl}?uerId=${userId}`
+          : `http://localhost:5050/api/goals/get?userId=${userId}`;
 
         const res = await fetch(url, {
           method: "GET",
@@ -92,7 +114,9 @@ export default function GoalsRenderer({ userId }) {
     const socket = io("http://localhost:5050");
     socketRef.current = socket;
     socket.on("connect", () => {
-      console.log("Socket connected", socket.id);
+      if (process.env.NODE_ENV === "development") {
+        console.log("Socket connected", socket.id);
+      }
       socket.emit("join", { userId });
     });
 
@@ -132,7 +156,7 @@ export default function GoalsRenderer({ userId }) {
       const { goal, current, percentDisplayed, barPercent, remaining } =
         payload;
 
-      if (!goal && !goal.id) {
+      if (!goal && !goal?.id) {
         return;
       }
 
@@ -200,7 +224,10 @@ export default function GoalsRenderer({ userId }) {
   }, [userId]);
 
   const onUpdate = async (goalId, data) => {
-    let url = `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}`;
+    const baseUrl = process.env.UPDATE_GOAL;
+    const url = baseUrl
+      ? `${baseUrl}${goalId}?userId=${userId}`
+      : `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}`;
     try {
       const res = await fetch(url, {
         method: "PATCH",
@@ -212,14 +239,17 @@ export default function GoalsRenderer({ userId }) {
         const error = await res.json();
         throw new Error(error.message);
       }
-      const result = await res.json();
+      return await res.json();
     } catch (error) {
       throw error;
     }
   };
 
   const onDelete = async (goalId) => {
-    let url = `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}`;
+    const baseUrl = process.env.DELETE_GOAL;
+    const url = baseUrl
+      ? `${baseUrl}${goalId}?userId=${userId}`
+      : `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}`;
     try {
       const res = await fetch(url, {
         method: "DELETE",
@@ -230,35 +260,105 @@ export default function GoalsRenderer({ userId }) {
         const error = await res.json();
         throw new Error(error.message);
       }
+      return true;
     } catch (error) {
       throw error;
     }
   };
+
+  const filteredGoals = useMemo(() => {
+    if (!goals || goals.length === 0) return [];
+
+    let list = goals;
+
+    if (typeFilter === "true") list = list.filter((g) => !!g.type);
+    else if (typeFilter === "false") list = list.filter((g) => !g.type);
+
+    if (showCompleted) list = list.filter((g) => !!g.completed);
+
+    return list;
+  }, [goals, typeFilter, showCompleted]);
 
   if (loading) {
     return <p>Loading user data</p>;
   }
 
   return (
-    <div className="space-y-2 p-6">
-      {goals.map((g) => (
-        <GoalCard
-          key={g.id}
-          goal={g}
-          current={currents[g.id] ?? 0}
-          percentDisplayed={percents[g.id]?.percentDisplayed ?? 0}
-          barPercent={percents[g.id]?.barPercent ?? (g.type ? 100 : 0)}
-          remaining={
-            typeof percents[g.id]?.remaining !== "undefined"
-              ? percents[g.id].remaining
-              : g.type
-              ? Math.max(0, Number(g.quantity) - (currents[g.id] ?? 0))
-              : null
-          }
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-        />
-      ))}
+    <div className="w-full h-[40vh] min-h-0 bg-white rounded-xl shadow-lg p-4 flex flex-col mb-4">
+      <div className="flex items-center justify-between border-b border-gray-700 pb-2">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 pt-1">
+            Budgets & Goals
+          </h3>
+          <span className="text-sm text-slate-500">
+            {filteredGoals.length} item(s)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <FilterButton
+            active={typeFilter === "false"}
+            onClick={() =>
+              setTypeFilter((prev) => (prev === "false" ? "all" : "false"))
+            }
+            title="Only non-typed goals"
+          >
+            <ShieldBan size={16} />
+          </FilterButton>
+
+          <FilterButton
+            active={typeFilter === "true"}
+            onClick={() =>
+              setTypeFilter((prev) => (prev === "true" ? "all" : "true"))
+            }
+            title="Only typed goals"
+          >
+            <Flame size={16} />
+          </FilterButton>
+
+          <FilterButton
+            active={showCompleted}
+            onClick={() => setShowCompleted((s) => !s)}
+            title="Toggle: show only completed goals"
+          >
+            <CircleCheckBig size={16} />
+          </FilterButton>
+        </div>
+      </div>
+
+      <div className="w-full space-y-3 p-1 mt-4 overflow-y-auto flex-1">
+        {filteredGoals.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No goals for selected filters.
+          </p>
+        ) : (
+          filteredGoals
+            .sort((a, b) => {
+              if (a.created_at && b.created_at)
+                return new Date(b.created_at) - new Date(a.created_at);
+              return (Number(b.id) || 0) - (Number(a.id) || 0);
+            })
+            .map((g) => (
+              <div key={g.id} className="w-full">
+                <GoalCard
+                  goal={g}
+                  current={currents[g.id] ?? 0}
+                  percentDisplayed={percents[g.id]?.percentDisplayed ?? 0}
+                  barPercent={percents[g.id]?.barPercent ?? (g.type ? 100 : 0)}
+                  remaining={
+                    typeof percents[g.id]?.remaining !== "undefined"
+                      ? percents[g.id].remaining
+                      : g.type
+                      ? Math.max(0, Number(g.quantity) - (currents[g.id] ?? 0))
+                      : null
+                  }
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                />
+              </div>
+            ))
+        )}
+      </div>
     </div>
   );
 }

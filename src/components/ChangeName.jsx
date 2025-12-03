@@ -13,7 +13,10 @@ export default function ChangeName({ user }) {
   useEffect(() => {
     const fetchUsername = async () => {
       try {
-        const url = `http://localhost:5050/api/name/get?userId=${user.id}`;
+        const baseUrl = process.env.GET_NAME_URL;
+        const url = baseUrl
+          ? `${baseUrl}?userId=${user.id}`
+          : `http://localhost:5050/api/name/get?userId=${user.id}`;
         const res = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -94,7 +97,7 @@ export default function ChangeName({ user }) {
     <div className="w-full max-w-4xl">
       <form
         onSubmit={handleSubmit}
-        className="bg-white border border-gray-100 rounded-lg p-6 shadow-lg"
+        className="bg-white border border-gray-100 rounded-md p-6 shadow-lg"
       >
         <h3 className="text-lg font-semibold mb-2 text-gray-700">
           Choose a display name

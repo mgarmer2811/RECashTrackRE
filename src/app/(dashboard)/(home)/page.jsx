@@ -8,10 +8,11 @@ import Sidebar from "@/components/Sidebar";
 import DoughnutChart from "@/components/DoughnutChart";
 import CreateGoal from "@/components/CreateGoal";
 import GoalsRenderer from "@/components/GoalsRenderer";
-import CreateTransaction from "@/components/Clipboard";
+import Clipboard from "@/components/Clipboard";
 import TransactionRenderer from "@/components/TransactionRenderer";
 import FabCreateTransaction from "@/components/FabCreateTransaction";
 import TabBar from "@/components/TabBar";
+import ContributionRenderer from "@/components/ContributionRenderer";
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -40,49 +41,28 @@ export default function HomePage() {
         <TabBar activeTab={activeTab} onChange={setActiveTab} />
 
         {activeTab === 0 && (
-          <div className="w-full mx-auto flex flex-col items-center gap-4 mb-4 h-screen overflow-hidden">
+          <div className="w-full mx-auto flex flex-col items-center gap-4 mb-4 h-screen">
             <div className="w-full">
               <DoughnutChart userId={user.id} />
             </div>
-            <div className="w-full flex-grow overflow-hidden">
+            <div className="w-full flex-1">
               <TransactionRenderer userId={user.id} />
             </div>
             <FabCreateTransaction userId={user.id} />
           </div>
         )}
 
-        {activeTab === 1 && <></>}
-      </div>
-      {/* Desktop view */}
-      {/*<div className="hidden md:flex">
-        <div className="flex w-full">
-          <div className="mt-[5vh]">
-            <Sidebar />
-          </div>
-
-          <div className="flex-1 flex justify-center">
-            <div className="w-full max-w-4xl my-[5vh] flex flex-col gap-8 overflow-y-auto px-4">
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <DoughnutChart userId={user.id} />
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <GoalsRenderer userId={user.id} />
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <CreateGoal userId={user.id} />
-              </div>
-
-              <div className="bg-white p-6 rounded-xl shadow-lg"></div>
-
-              <div className="bg-white p-6 rounded-xl shadow-lg">
-                <CreateTransaction userId={user.id} />
-              </div>
+        {activeTab === 1 && (
+          <div className="w-full mx-auto flex flex-col items-center gap-4 mb-4 h-screen">
+            <div className="w-full">
+              <GoalsRenderer userId={user.id} />
+            </div>
+            <div className="w-full flex-1">
+              <ContributionRenderer userId={user.id} />
             </div>
           </div>
-        </div>
-      </div>*/}
+        )}
+      </div>
     </>
   );
 }

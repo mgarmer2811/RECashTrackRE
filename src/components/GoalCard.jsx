@@ -27,9 +27,11 @@ export default function GoalCard({
     ? remaining ?? Math.max(0, Number(goal.quantity) - current)
     : null;
 
+  const barColor = isBudget ? "#DC2626" : "#1D4ED8";
+
   return (
     <>
-      <div className="relative bg-white shadow-xl rounded-2xl p-4 w-full max-w-xl">
+      <div className="relative bg-white shadow-lg rounded-xl p-4 w-full">
         <div className="absolute top-3 right-3">
           <button
             onClick={openModal}
@@ -55,7 +57,7 @@ export default function GoalCard({
 
           <div className="flex-1">
             <div className="flex items-baseline justify-between pr-10">
-              <h4 className="text-sm font-medium">{goal.name}</h4>
+              <h4 className="text-sm font-bold">{goal.name.toUpperCase()}</h4>
               <span className="text-xs text-slate-500">
                 {new Date(goal.created_at).toLocaleDateString()}
               </span>
@@ -79,9 +81,7 @@ export default function GoalCard({
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${barWidth}%`,
-                    background: isBudget
-                      ? "linear-gradient(90deg, #FFBABA, #FF7A7A)"
-                      : "linear-gradient(90deg, #A3D8D7, #4DAE8C)",
+                    backgroundColor: barColor,
                   }}
                 />
               </div>

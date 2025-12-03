@@ -15,7 +15,7 @@ export default function RecoverPage() {
     setStatusMsg(null);
     setLoading(true);
 
-    const redirectTo = "http://localhost:3000/reset";
+    const redirectTo = process.env.RESET_URL || "http://localhost:3000/reset";
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });
@@ -50,7 +50,7 @@ export default function RecoverPage() {
         </p>
 
         <form onSubmit={handleSendReset} className="space-y-5">
-          <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
+          <div className="flex items-center border border-gray-300 rounded-md px-3 py-2 focus-within:ring-2 focus-within:ring-blue-400">
             <EmailIcon />
             <input
               type="email"
@@ -65,7 +65,7 @@ export default function RecoverPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 rounded-lg text-white font-bold bg-blue-600 hover:bg-blue-700"
+            className="w-full py-2 rounded-md text-white font-bold bg-blue-600 hover:bg-blue-700"
           >
             {loading ? "Sending..." : "Send reset email"}
           </button>
