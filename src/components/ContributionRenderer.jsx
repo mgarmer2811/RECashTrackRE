@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { io } from "socket.io-client";
 import { showError } from "@/app/utils/Toast";
-import TransactionCard from "./TransactionCard";
-import { FunnelX, X, Funnel } from "lucide-react";
+import ContributionCard from "./ContributionCard";
+import CreateContributionModal from "./CreateContributionModal";
+import { FunnelX, X, Funnel, Plus } from "lucide-react";
 
 const DEPOSIT_CATEGORY = 10;
 const WITHDRAW_CATEGORY = 11;
@@ -29,16 +30,22 @@ export default function ContributionRenderer({ userId }) {
   const socketRef = useRef(null);
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const [appliedTypeFilter, setAppliedTypeFilter] = useState(null);
   const [appliedMinQuantity, setAppliedMinQuantity] = useState(null);
   const [appliedMaxQuantity, setAppliedMaxQuantity] = useState(null);
+  const [appliedGoalFilter, setAppliedGoalFilter] = useState(null);
 
   const [draftTypeFilter, setDraftTypeFilter] = useState(null);
   const [draftMinQuantity, setDraftMinQuantity] = useState(0);
   const [draftMaxQuantity, setDraftMaxQuantity] = useState(500);
   const [draftMinUnlimited, setDraftMinUnlimited] = useState(true);
   const [draftMaxUnlimited, setDraftMaxUnlimited] = useState(true);
+  const [draftGoalFilter, setDraftGoalFilter] = useState("all");
+
+  const [goals, setGoals] = useState([]);
+  const [transactionGoals, setTransactionGoals] = useState([]);
 
   useEffect(() => {
     if (!userId) {
@@ -85,6 +92,93 @@ export default function ContributionRenderer({ userId }) {
     };
 
     fetchTransactions();
+
+    return () => controller.abort();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const fetchGoals = async () => {
+      try {
+        const baseUrl = process.env.GET_GOALS;
+        const url = baseUrl
+          ? `${baseUrl}?userId=${userId}`
+          : `http://localhost:5050/api/goals/get?userId=${userId}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal,
+        });
+
+        if (!res.ok) {
+          if (signal.aborted) return;
+          const error = await res.json();
+          throw new Error(error.message);
+        }
+
+        const data = await res.json();
+        if (!signal.aborted) {
+          const fetchedGoals = data.goals ?? [];
+          setGoals(fetchedGoals);
+        }
+      } catch (error) {
+        if (signal.aborted) return;
+        if (process.env.NODE_ENV === "development") {
+          console.error(error.message);
+        }
+        showError("Unexpected error. Could not load goals");
+      }
+    };
+
+    fetchGoals();
+
+    return () => controller.abort();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const fetchTransactionGoals = async () => {
+      try {
+        const baseUrl = process.env.GET_TRANSACTIONS_TG;
+        const url = baseUrl
+          ? `${baseUrl}?userId=${userId}`
+          : `http://localhost:5050/api/transactions/get/tg?userId=${userId}`;
+
+        const res = await fetch(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          signal,
+        });
+
+        if (!res.ok) {
+          if (signal.aborted) return;
+          const error = await res.json();
+          throw new Error(error.message);
+        }
+
+        const data = await res.json();
+        if (!signal.aborted) {
+          const tg = data.transactionGoals ?? [];
+          setTransactionGoals(tg);
+        }
+      } catch (error) {
+        if (signal.aborted) return;
+        if (process.env.NODE_ENV === "development")
+          console.error(error.message);
+        showError("Unexpected error. Could not load transaction-goal links");
+      }
+    };
+
+    fetchTransactionGoals();
 
     return () => controller.abort();
   }, [userId]);
@@ -145,7 +239,10 @@ export default function ContributionRenderer({ userId }) {
   }, [userId]);
 
   const onUpdate = async (transactionId, data) => {
-    const url = `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
+    const baseUrl = process.env.UPDATE_TRANSACTION;
+    const url = baseUrl
+      ? `${baseUrl}${transactionId}?userId=${userId}`
+      : `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
     const res = await fetch(url, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -159,7 +256,10 @@ export default function ContributionRenderer({ userId }) {
   };
 
   const onDelete = async (transactionId) => {
-    const url = `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;
+    const baseUrl = process.env.DELETE_TRANSACTION;
+    const url = baseUrl
+      ? `${baseUrl}${transactionId}?userId=${userId}`
+      : `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;
     const res = await fetch(url, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -174,9 +274,15 @@ export default function ContributionRenderer({ userId }) {
   const isFilterApplied = useMemo(() => {
     const noQuantityLimits =
       (appliedMinQuantity === null || appliedMinQuantity === undefined) &&
-      (appliedMaxQuantity === null || appliedMaxQuantity === undefined);
+      (appliedMaxQuantity === null || appliedMaxQuantity === undefined) &&
+      (appliedGoalFilter === null || appliedGoalFilter === undefined);
     return !(appliedTypeFilter === null && noQuantityLimits);
-  }, [appliedTypeFilter, appliedMinQuantity, appliedMaxQuantity]);
+  }, [
+    appliedTypeFilter,
+    appliedMinQuantity,
+    appliedMaxQuantity,
+    appliedGoalFilter,
+  ]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
@@ -184,6 +290,22 @@ export default function ContributionRenderer({ userId }) {
         if (Number(t.category) !== DEPOSIT_CATEGORY) return false;
       } else if (appliedTypeFilter === "withdraw") {
         if (Number(t.category) !== WITHDRAW_CATEGORY) return false;
+      }
+
+      if (
+        appliedGoalFilter !== null &&
+        typeof appliedGoalFilter !== "undefined"
+      ) {
+        const goalId = Number(appliedGoalFilter);
+        const matchedTg = transactionGoals.filter(
+          (tg) => Number(tg.goal_id) === goalId
+        );
+
+        if (matchedTg.length === 0) return false;
+        const matchedIds = new Set(
+          matchedTg.map((tg) => Number(tg.transaction_id))
+        );
+        if (!matchedIds.has(Number(t.id))) return false;
       }
 
       const q = Number(t.quantity);
@@ -203,7 +325,14 @@ export default function ContributionRenderer({ userId }) {
 
       return true;
     });
-  }, [transactions, appliedTypeFilter, appliedMinQuantity, appliedMaxQuantity]);
+  }, [
+    transactions,
+    appliedTypeFilter,
+    appliedMinQuantity,
+    appliedMaxQuantity,
+    appliedGoalFilter,
+    transactionGoals,
+  ]);
 
   const sliderMax = useMemo(() => {
     const maxQ =
@@ -236,14 +365,47 @@ export default function ContributionRenderer({ userId }) {
           ? sliderMax
           : Number(appliedMaxQuantity)
       );
+
+      setDraftGoalFilter(
+        appliedGoalFilter === null || appliedGoalFilter === undefined
+          ? "all"
+          : String(appliedGoalFilter)
+      );
     }
   }, [
     isFilterOpen,
     appliedTypeFilter,
     appliedMinQuantity,
     appliedMaxQuantity,
+    appliedGoalFilter,
     sliderMax,
   ]);
+
+  useEffect(() => {
+    if (draftTypeFilter === null) {
+      setDraftGoalFilter("all");
+      return;
+    }
+
+    const allowedGoals = goals.filter((g) => {
+      const gIsTrue = g.type === true || String(g.type) === "true";
+      if (draftTypeFilter === "withdraw") return gIsTrue;
+      if (draftTypeFilter === "deposit") return !gIsTrue;
+      return true;
+    });
+
+    if (allowedGoals.length === 0) {
+      setDraftGoalFilter("none");
+      return;
+    }
+
+    if (
+      draftGoalFilter === "all" ||
+      !allowedGoals.some((g) => String(g.id) === String(draftGoalFilter))
+    ) {
+      setDraftGoalFilter(String(allowedGoals[0].id));
+    }
+  }, [draftTypeFilter, draftGoalFilter, goals]);
 
   const openFilters = () => {
     setDraftTypeFilter(appliedTypeFilter);
@@ -267,6 +429,12 @@ export default function ContributionRenderer({ userId }) {
         : Number(appliedMaxQuantity)
     );
 
+    setDraftGoalFilter(
+      appliedGoalFilter === null || appliedGoalFilter === undefined
+        ? "all"
+        : String(appliedGoalFilter)
+    );
+
     setIsFilterOpen(true);
   };
 
@@ -284,6 +452,14 @@ export default function ContributionRenderer({ userId }) {
     setAppliedMinQuantity(min !== null ? Number(min) : null);
     setAppliedMaxQuantity(max !== null ? Number(max) : null);
 
+    setAppliedGoalFilter(
+      draftTypeFilter === null
+        ? null
+        : draftGoalFilter === "all" || draftGoalFilter === "none"
+        ? null
+        : Number(draftGoalFilter)
+    );
+
     setIsFilterOpen(false);
   };
 
@@ -293,6 +469,7 @@ export default function ContributionRenderer({ userId }) {
     setDraftMaxUnlimited(true);
     setDraftMinQuantity(0);
     setDraftMaxQuantity(sliderMax);
+    setDraftGoalFilter("all");
   };
 
   useEffect(() => {
@@ -300,10 +477,43 @@ export default function ContributionRenderer({ userId }) {
     if (draftMinQuantity > sliderMax) setDraftMinQuantity(sliderMax);
   }, [sliderMax]);
 
+  const goalOptionsForDraft = useMemo(() => {
+    if (!goals || goals.length === 0) return [];
+    if (draftTypeFilter === null) return [];
+    return goals.filter((g) => {
+      const gIsTrue = g.type === true || String(g.type) === "true";
+      if (draftTypeFilter === "withdraw") return gIsTrue;
+      if (draftTypeFilter === "deposit") return !gIsTrue;
+      return true;
+    });
+  }, [goals, draftTypeFilter]);
+
+  const handleCreated = (createdTransaction, createdTG) => {
+    if (!createdTransaction) return;
+    setTransactions((ts) => {
+      const exists = ts.some(
+        (t) => Number(t.id) === Number(createdTransaction.id)
+      );
+      if (exists) return ts;
+      return [...ts, createdTransaction];
+    });
+    if (createdTG) {
+      setTransactionGoals((tg) => [...tg, createdTG]);
+    }
+  };
+
   if (loading) return <p>Loading user data</p>;
 
   return (
     <div className="w-full h-[60vh] min-h-0 bg-white rounded-xl shadow-lg p-4 flex flex-col mb-4">
+      <CreateContributionModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        userId={userId}
+        goals={goals}
+        onCreated={handleCreated}
+      />
+
       <div className="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-700 pt-1">
@@ -315,6 +525,14 @@ export default function ContributionRenderer({ userId }) {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCreateOpen(true)}
+            title="Create contribution"
+            className="p-1 rounded-md bg-blue-700 hover:bg-blue-800 text-white flex items-center justify-center"
+          >
+            <Plus />
+          </button>
+
           <button
             onClick={openFilters}
             title="Open filters"
@@ -467,6 +685,34 @@ export default function ContributionRenderer({ userId }) {
             </div>
 
             <div className="border-t my-4" />
+            <div className="mb-4">
+              <div className="text-sm font-medium text-gray-600 mb-2">Goal</div>
+
+              <div className="flex items-center gap-2">
+                <select
+                  className="p-2 rounded-md border w-full"
+                  value={draftGoalFilter}
+                  onChange={(e) => setDraftGoalFilter(e.target.value)}
+                  disabled={draftTypeFilter === null}
+                >
+                  {draftTypeFilter === null && (
+                    <option value="all">All goals</option>
+                  )}
+
+                  {draftGoalFilter === "none" ? (
+                    <option value="none" disabled>
+                      No goals available
+                    </option>
+                  ) : (
+                    goalOptionsForDraft.map((g) => (
+                      <option key={g.id} value={String(g.id)}>
+                        {g.name ?? `Goal ${g.id}`}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </div>
 
             <div className="flex items-center justify-end gap-2 mt-4">
               <button
@@ -478,7 +724,12 @@ export default function ContributionRenderer({ userId }) {
 
               <button
                 onClick={handleApply}
-                className="px-3 py-1 rounded-md text-sm font-semibold bg-blue-600 text-white"
+                disabled={draftGoalFilter === "none"}
+                className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                  draftGoalFilter === "none"
+                    ? "bg-gray-300 text-gray-600"
+                    : "bg-blue-600 text-white"
+                }`}
               >
                 Apply
               </button>
@@ -497,7 +748,7 @@ export default function ContributionRenderer({ userId }) {
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
             .map((t) => (
               <div key={t.id} className="w-full">
-                <TransactionCard
+                <ContributionCard
                   transaction={t}
                   onUpdate={onUpdate}
                   onDelete={onDelete}

@@ -44,7 +44,7 @@ export default function GoalsRenderer({ userId }) {
       try {
         const baseUrl = process.env.GET_GOALS;
         const url = baseUrl
-          ? `${baseUrl}?uerId=${userId}`
+          ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/goals/get?userId=${userId}`;
 
         const res = await fetch(url, {

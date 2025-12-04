@@ -22,16 +22,40 @@ export default function GoalCard({
     0,
     Math.min(100, Number(percentDisplayed) || 0)
   );
-  const barWidth = Math.max(0, Math.min(100, Number(barPercent) || 0));
-  const remainingToShow = isBudget
-    ? remaining ?? Math.max(0, Number(goal.quantity) - current)
-    : null;
+  const baseBarWidth = Math.max(0, Math.min(100, Number(barPercent) || 0));
+
+  const quantity = Number(goal.quantity) || 0;
+  const curr = Number(current) || 0;
+  const remainingToShow = isBudget ? remaining ?? quantity - curr : null;
+
+  const excess = Math.max(0, curr - quantity);
 
   const barColor = isBudget ? "#DC2626" : "#1D4ED8";
 
+  function hexToRgba(hex, alpha) {
+    let h = hex.replace("#", "");
+    if (h.length === 3) {
+      h = h
+        .split("")
+        .map((c) => c + c)
+        .join("");
+    }
+    const r = parseInt(h.substring(0, 2), 16);
+    const g = parseInt(h.substring(2, 4), 16);
+    const b = parseInt(h.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  const completedBg = goal.completed ? hexToRgba(barColor, 0.08) : "white";
+
+  const computedBarWidth = isBudget && remainingToShow < 0 ? 0 : baseBarWidth;
+
   return (
     <>
-      <div className="relative bg-white shadow-lg rounded-xl p-4 w-full">
+      <div
+        className="relative shadow-lg rounded-xl p-4 w-full"
+        style={{ backgroundColor: completedBg }}
+      >
         <div className="absolute top-3 right-3">
           <button
             onClick={openModal}
@@ -64,13 +88,37 @@ export default function GoalCard({
             </div>
 
             <div className="mt-3">
-              <div className="flex justify-between text-xs mb-2">
-                <div className="font-mono">
-                  {isBudget
-                    ? formatEuro(remainingToShow ?? 0)
-                    : formatEuro(current ?? 0)}{" "}
-                  / {formatEuro(goal.quantity)}
+              <div className="flex items-center justify-between text-xs mb-2">
+                <div className="font-mono flex items-baseline gap-2">
+                  {isBudget ? (
+                    <>
+                      <span
+                        className={
+                          remainingToShow < 0 ? "font-bold" : undefined
+                        }
+                        style={
+                          remainingToShow < 0 ? { color: barColor } : undefined
+                        }
+                      >
+                        {formatEuro(remainingToShow ?? 0)}
+                      </span>
+                      <span> / </span>
+                      <span className="text-slate-500">
+                        {formatEuro(quantity)}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {formatEuro(curr ?? 0)} / {formatEuro(quantity)}
+                    </>
+                  )}
+                  {!isBudget && excess > 0 && (
+                    <span className="ml-2 text-sm font-bold text-blue-700">
+                      +{formatEuro(excess)}
+                    </span>
+                  )}
                 </div>
+
                 <div className="font-semibold">
                   {Math.round(displayPercent)}%
                 </div>
@@ -80,7 +128,7 @@ export default function GoalCard({
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
-                    width: `${barWidth}%`,
+                    width: `${computedBarWidth}%`,
                     backgroundColor: barColor,
                   }}
                 />

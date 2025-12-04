@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { showSuccess, showError } from "@/app/utils/Toast";
 
-export default function ChangeName({ user }) {
+export default function ChangeName({ userId }) {
   const [name, setName] = useState("");
   const [originalName, setOriginalName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,7 +61,10 @@ export default function ChangeName({ user }) {
 
     setLoading(true);
     try {
-      const url = `http://localhost:5050/api/name/change?userId=${user.id}`;
+      const baseUrl = process.env.CHANGE_NAME;
+      const url = baseUrl
+        ? `${baseUrl}?userId=${userId}`
+        : `http://localhost:5050/api/name/change?userId=${userId}`;
       const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   useEffect,
   useMemo,
@@ -7,6 +9,7 @@ import {
   useLayoutEffect,
 } from "react";
 import { VictoryPie, VictoryTooltip, VictoryContainer } from "victory";
+import { io } from "socket.io-client";
 import { CATEGORY_MAP } from "../app/utils/Utils";
 
 function FilterButton({ active, onClick, children, title }) {
@@ -26,6 +29,7 @@ function FilterButton({ active, onClick, children, title }) {
 export default function DoughnutChart({ userId }) {
   const [transactions, setTransactions] = useState([]);
   const containerRef = useRef(null);
+  const socketRef = useRef(null);
 
   const calcInitialWidth = () => {
     if (typeof window === "undefined") return 360;
@@ -66,6 +70,69 @@ export default function DoughnutChart({ userId }) {
     fetchTransactions();
 
     return () => controller.abort();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const SOCKET_URL = process.env.SOCKET_URL || "http://localhost:5050";
+    const socket = io(SOCKET_URL);
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      if (process.env.NODE_ENV === "development")
+        console.log("DoughnutChart socket connected", socket.id);
+      socket.emit("join", { userId });
+    });
+
+    socket.on("transaction:created", (payload) => {
+      const { transaction } = payload || {};
+      if (!transaction) return;
+
+      setTransactions((ts) => {
+        const exists = ts.some((t) => t.id === transaction.id);
+        if (exists) return ts;
+        return [...ts, transaction];
+      });
+    });
+
+    socket.on("transaction:updated", (payload) => {
+      const { transaction } = payload || {};
+      if (!transaction) return;
+      const id = Number(transaction.id);
+      if (!id && id !== 0) return;
+
+      setTransactions((ts) => {
+        const exists = ts.some((t) => Number(t.id) === id);
+        if (exists) {
+          return ts.map((t) =>
+            Number(t.id) === id ? { ...t, ...transaction, id } : t
+          );
+        }
+        return [...ts, { ...transaction, id }];
+      });
+    });
+
+    socket.on("transaction:deleted", (payload) => {
+      const { transactionId } = payload || {};
+      setTransactions((ts) => ts.filter((t) => t.id !== transactionId));
+    });
+
+    socket.on("disconnect", (reason) => {
+      if (process.env.NODE_ENV === "development")
+        console.warn("DoughnutChart socket disconnected. Reason: ", reason);
+    });
+
+    return () => {
+      try {
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit("leave", { userId });
+        }
+      } finally {
+        socketRef.current?.disconnect();
+        socketRef.current = null;
+      }
+    };
   }, [userId]);
 
   const getCutoff = useCallback((r) => {
@@ -169,7 +236,7 @@ export default function DoughnutChart({ userId }) {
   }, [handleResize]);
 
   let chartHeight = Math.max(Math.round(chartWidth * 0.8), 180);
-  chartHeight = Math.min(chartHeight, 350);
+  chartHeight = Math.min(chartHeight, 300);
   const innerRadius = Math.round(Math.min(chartWidth, chartHeight) * 0.12);
   const tooltipFontSize = useMemo(
     () => Math.round(Math.max(10, Math.min(18, chartWidth / 25))),
@@ -214,7 +281,7 @@ export default function DoughnutChart({ userId }) {
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center md:gap-6">
-        <div style={{ width: "100%", maxWidth: 480 }} className="mx-auto">
+        <div style={{ width: "100%", maxWidth: 420 }} className="mx-auto">
           <div
             style={{
               width: "100%",

@@ -6,13 +6,12 @@ import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
 import Sidebar from "@/components/Sidebar";
 import DoughnutChart from "@/components/DoughnutChart";
-import CreateGoal from "@/components/CreateGoal";
 import GoalsRenderer from "@/components/GoalsRenderer";
-import Clipboard from "@/components/Clipboard";
 import TransactionRenderer from "@/components/TransactionRenderer";
 import FabCreateTransaction from "@/components/FabCreateTransaction";
 import TabBar from "@/components/TabBar";
 import ContributionRenderer from "@/components/ContributionRenderer";
+import FabCreateGoal from "@/components/FabCreateGoal";
 
 export default function HomePage() {
   const { user, loading } = useAuth();
@@ -60,6 +59,7 @@ export default function HomePage() {
             <div className="w-full flex-1">
               <ContributionRenderer userId={user.id} />
             </div>
+            <FabCreateGoal userId={user.id} />
           </div>
         )}
       </div>
