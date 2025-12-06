@@ -13,6 +13,7 @@ export default function CreateContributionModal({
   userId,
   goals = [],
   onCreated,
+  familyId,
 }) {
   const [transactionType, setTransactionType] = useState("deposit");
   const [goalId, setGoalId] = useState("");
@@ -83,7 +84,7 @@ export default function CreateContributionModal({
     };
 
     const baseUrl = process.env.CREATE_TRANSACTION;
-    const goalQuery = goalId ? `&goalId=${goalId}` : "";
+    const goalQuery = goalId ? `&goalId=${goalId}&familyId=${familyId}` : "";
     const url = baseUrl
       ? `${baseUrl}?userId=${userId}${goalQuery}`
       : `http://localhost:5050/api/transactions/create/?userId=${userId}${goalQuery}`;

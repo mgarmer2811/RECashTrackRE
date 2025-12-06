@@ -1,10 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import GoalCard from "./GoalCard";
+import { useState, useEffect, useRef, useMemo } from "react";
+import FamilyGoalCard from "@/components/FamilyGoalCard";
 import { io } from "socket.io-client";
+import { ShieldBan, Flame, CircleCheckBig } from "lucide-react";
 
-export default function FamilyGoalsRenderer({ userId }) {
+function FilterButton({ active, onClick, children, title }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`min-w-[44px] px-2 py-1 rounded-md text-sm font-semibold transition-colors flex items-center justify-center ${
+        active ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function FamilyGoalsRenderer({
+  userId,
+  onSelectedFamilyChange = () => {},
+}) {
   const [families, setFamilies] = useState([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState(null);
   const [familyGoals, setFamilyGoals] = useState({});
@@ -13,7 +31,11 @@ export default function FamilyGoalsRenderer({ userId }) {
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
 
-  const familyDisplayName = (f) => f.name ?? "Family";
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  const familyDisplayName = (f) =>
+    f && f.name ? String(f.name).toUpperCase() : "FAMILY";
 
   useEffect(() => {
     if (!userId) {
@@ -27,12 +49,12 @@ export default function FamilyGoalsRenderer({ userId }) {
     const fetchFamiliesAndGoals = async () => {
       setLoading(true);
       try {
-        const baseUrl = process.env.GET_FAMILIES;
-        const url = baseUrl
-          ? `${baseUrl}?userId=${userId}`
+        const baseUrlFamilies = process.env.GET_FAMILIES;
+        const familiesUrl = baseUrlFamilies
+          ? `${baseUrlFamilies}?userId=${userId}`
           : `http://localhost:5050/api/family/get?userId=${userId}`;
 
-        const res = await fetch(url, {
+        const res = await fetch(familiesUrl, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
@@ -53,15 +75,15 @@ export default function FamilyGoalsRenderer({ userId }) {
 
         const promises = unifiedFamilies.map(async (family) => {
           try {
-            const baseUrl = process.env.GET_GOALS;
-            const url = baseUrl
-              ? `${baseUrl}?familyId=${family.id}&userId=${userId}`
+            const baseUrlGoals = process.env.GET_GOALS;
+            const url = baseUrlGoals
+              ? `${baseUrlGoals}?familyId=${family.id}&userId=${userId}`
               : `http://localhost:5050/api/goals/get?familyId=${family.id}&userId=${userId}`;
-            const res = await fetch(url, { signal });
-            if (!res.ok) {
+            const r = await fetch(url, { signal });
+            if (!r.ok) {
               return { goals: [] };
             }
-            return await res.json();
+            return await r.json();
           } catch (err) {
             if (signal.aborted) return { goals: [] };
             console.error(`Failed to fetch goals for family ${family.id}`, err);
@@ -78,7 +100,6 @@ export default function FamilyGoalsRenderer({ userId }) {
 
         const defaultCurrents = {};
         const defaultPercents = {};
-
         Object.values(goalsMap).forEach((array) => {
           (array || []).forEach((goal) => {
             const gid = String(goal.id);
@@ -127,9 +148,7 @@ export default function FamilyGoalsRenderer({ userId }) {
 
     fetchFamiliesAndGoals();
 
-    return () => {
-      controller.abort();
-    };
+    return () => controller.abort();
   }, [userId]);
 
   useEffect(() => {
@@ -142,10 +161,11 @@ export default function FamilyGoalsRenderer({ userId }) {
       if (process.env.NODE_ENV === "development") {
         console.log("socket connected", socket.id);
       }
-
       if (selectedFamilyId !== null) {
         socket.emit("join", { familyId: selectedFamilyId });
         socket.currentFamily = selectedFamilyId;
+      } else {
+        socket.currentFamily = null;
       }
     });
 
@@ -312,7 +332,21 @@ export default function FamilyGoalsRenderer({ userId }) {
 
   useEffect(() => {
     const socket = socketRef.current;
-    if (!socket || !socket.connected) return;
+    if (!socket || !socket.connected) {
+      setFamilyGoals((prev) => {
+        const key = String(selectedFamilyId);
+        if (!key) return prev;
+        if (typeof prev[key] === "undefined") {
+          return { ...prev, [key]: [] };
+        }
+        return prev;
+      });
+      const fam =
+        families.find((f) => String(f.id) === String(selectedFamilyId)) ?? null;
+      const goals = familyGoals[String(selectedFamilyId)] ?? [];
+      onSelectedFamilyChange(fam, goals);
+      return;
+    }
 
     try {
       const prev = socket.currentFamily;
@@ -320,11 +354,12 @@ export default function FamilyGoalsRenderer({ userId }) {
         socket.emit("leave", { familyId: prev });
       }
     } catch (err) {
-      // ignore
     } finally {
       if (selectedFamilyId !== null) {
         socket.emit("join", { familyId: selectedFamilyId });
         socket.currentFamily = selectedFamilyId;
+      } else {
+        socket.currentFamily = null;
       }
     }
 
@@ -336,12 +371,31 @@ export default function FamilyGoalsRenderer({ userId }) {
       }
       return prev;
     });
+
+    const fam =
+      families.find((f) => String(f.id) === String(selectedFamilyId)) ?? null;
+    const goals = familyGoals[String(selectedFamilyId)] ?? [];
+    onSelectedFamilyChange(fam, goals);
   }, [selectedFamilyId]);
+
+  useEffect(() => {
+    const fam =
+      families.find((f) => String(f.id) === String(selectedFamilyId)) ?? null;
+    const goals = familyGoals[String(selectedFamilyId)] ?? [];
+    onSelectedFamilyChange(fam, goals);
+  }, [familyGoals, selectedFamilyId]);
+
+  useEffect(() => {
+    const fam =
+      families.find((f) => String(f.id) === String(selectedFamilyId)) ?? null;
+    const goals = familyGoals[String(selectedFamilyId)] ?? [];
+    onSelectedFamilyChange(fam, goals);
+  }, [families]);
 
   const onUpdate = async (goalId, data) => {
     const baseUrl = process.env.UPDATE_GOAL;
     const url = baseUrl
-      ? `${baseUrl}${goaldId}?userId=${userId}&familyId=${selectedFamilyId}`
+      ? `${baseUrl}${goalId}?userId=${userId}&familyId=${selectedFamilyId}`
       : `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}&familyId=${selectedFamilyId}`;
     try {
       const res = await fetch(url, {
@@ -353,6 +407,7 @@ export default function FamilyGoalsRenderer({ userId }) {
         const error = await res.json().catch(() => ({}));
         throw new Error(error.message);
       }
+      return await res.json();
     } catch (error) {
       if (process.env.NODE_ENV === "development")
         console.error("onUpdate error:", error);
@@ -363,8 +418,8 @@ export default function FamilyGoalsRenderer({ userId }) {
   const onDelete = async (goalId) => {
     const baseUrl = process.env.DELETE_GOAL;
     const url = baseUrl
-      ? `${baseUrl}${goalId}?userId=${userId}`
-      : `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}`;
+      ? `${baseUrl}${goalId}?userId=${userId}&familyId=${selectedFamilyId}`
+      : `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}&familyId=${selectedFamilyId}`;
     try {
       const res = await fetch(url, {
         method: "DELETE",
@@ -374,6 +429,7 @@ export default function FamilyGoalsRenderer({ userId }) {
         const error = await res.json().catch(() => ({}));
         throw new Error(error.message);
       }
+      return true;
     } catch (error) {
       if (process.env.NODE_ENV === "development")
         console.error("onDelete error:", error);
@@ -381,78 +437,161 @@ export default function FamilyGoalsRenderer({ userId }) {
     }
   };
 
-  const displayedGoals = familyGoals[String(selectedFamilyId)] || [];
+  const displayedGoals = useMemo(() => {
+    const list = familyGoals[String(selectedFamilyId)] ?? [];
+    if (!list || list.length === 0) return [];
+
+    let filtered = list.slice();
+
+    if (typeFilter === "true") filtered = filtered.filter((g) => !!g.type);
+    else if (typeFilter === "false") filtered = filtered.filter((g) => !g.type);
+
+    if (showCompleted) filtered = filtered.filter((g) => !!g.completed);
+
+    filtered = filtered.sort((a, b) => {
+      if (a.created_at && b.created_at)
+        return new Date(b.created_at) - new Date(a.created_at);
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    });
+
+    return filtered;
+  }, [familyGoals, selectedFamilyId, typeFilter, showCompleted]);
 
   if (loading) {
     return <p>Loading goals & families…</p>;
   }
 
+  const selectedFamily =
+    families.find((f) => String(f.id) === String(selectedFamilyId)) ?? null;
+
+  const safeSelectValue =
+    families.length === 0
+      ? ""
+      : selectedFamilyId !== null
+      ? String(selectedFamilyId)
+      : String(families[0].id);
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="w-full h-[50vh] bg-white rounded-xl shadow-lg p-4 mb-4 flex flex-col min-h-0">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
-          {(() => {
-            const sel = families.find(
-              (f) => String(f.id) === String(selectedFamilyId)
-            );
-            return sel ? familyDisplayName(sel) : "Goals";
-          })()}
-        </h2>
-        <div className="flex items-center gap-4">
-          <label htmlFor="familySelect" className="mr-2">
-            Show:
-          </label>
-          <select
-            id="familySelect"
-            value={selectedFamilyId === null ? "" : String(selectedFamilyId)}
-            onChange={(e) => {
-              const val = e.target.value;
-              setSelectedFamilyId(val === "" ? null : Number(val));
-              if (val !== "") {
-                setFamilyGoals((prev) => ({
-                  ...prev,
-                  [String(val)]: prev[String(val)] ?? [],
-                }));
-              }
-            }}
-            className="border px-2 py-1 rounded"
-          >
-            <option value="">(select family)</option>
-            {families.map((f) => (
-              <option key={String(f.id)} value={String(f.id)}>
-                {familyDisplayName(f)}
-              </option>
-            ))}
-          </select>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-700 tracking-wider">
+            {selectedFamily ? familyDisplayName(selectedFamily) : "GOALS"}
+          </h3>
+        </div>
+
+        <div className="flex flex-col items-end">
+          {families.length === 0 ? (
+            <select
+              disabled
+              value=""
+              className="border px-2 py-1 rounded rounded-md bg-gray-50 text-gray-500 cursor-not-allowed"
+              aria-label="Family selector - no families"
+            >
+              <option value="">NO FAMILIES</option>
+            </select>
+          ) : (
+            <select
+              id="familySelect"
+              value={safeSelectValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                const parsed = val === "" ? null : Number(val);
+                setSelectedFamilyId(parsed);
+                if (val !== "") {
+                  setFamilyGoals((prev) => ({
+                    ...prev,
+                    [String(val)]: prev[String(val)] ?? [],
+                  }));
+                }
+              }}
+              className="border px-2 py-1 rounded rounded-md"
+              aria-label="Family selector"
+            >
+              {families.map((f) => (
+                <option key={String(f.id)} value={String(f.id)}>
+                  {familyDisplayName(f)}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
+      <div className="w-full bg-white rounded-xl shadow p-4 flex flex-col mt-4 flex-1 min-h-0">
+        <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 pt-1">
+              Budgets & Savings
+            </h3>
+            <span className="text-sm text-slate-500">
+              {displayedGoals.length} item(s)
+            </span>
+          </div>
 
-      <div className="space-y-2">
-        {displayedGoals.length === 0 ? (
-          <p className="text-sm text-gray-500">No goals for this family</p>
-        ) : (
-          displayedGoals.map((g) => {
-            const gid = String(g.id);
-            return (
-              <GoalCard
-                key={gid}
-                goal={g}
-                current={currents[gid] ?? 0}
-                percentDisplayed={percents[gid]?.percentDisplayed ?? 0}
-                barPercent={percents[gid]?.barPercent ?? (g.type ? 100 : 0)}
-                remaining={
-                  typeof percents[gid]?.remaining !== "undefined"
-                    ? percents[gid].remaining
-                    : g.type
-                    ? Math.max(0, Number(g.quantity) - (currents[gid] ?? 0))
-                    : null
-                }
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-              />
-            );
-          })
-        )}
+          <div className="flex items-center gap-2">
+            <FilterButton
+              active={typeFilter === "false"}
+              onClick={() =>
+                setTypeFilter((prev) => (prev === "false" ? "all" : "false"))
+              }
+              title="Only non-typed goals"
+            >
+              <ShieldBan size={16} />
+            </FilterButton>
+
+            <FilterButton
+              active={typeFilter === "true"}
+              onClick={() =>
+                setTypeFilter((prev) => (prev === "true" ? "all" : "true"))
+              }
+              title="Only typed goals"
+            >
+              <Flame size={16} />
+            </FilterButton>
+
+            <FilterButton
+              active={showCompleted}
+              onClick={() => setShowCompleted((s) => !s)}
+              title="Toggle: show only completed goals"
+            >
+              <CircleCheckBig size={16} />
+            </FilterButton>
+          </div>
+        </div>
+
+        <div className="w-full space-y-3 p-1 mt-4 overflow-y-auto flex-1 h-[40vh] min-h-0">
+          {displayedGoals.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No goals for this family / selected filters.
+            </p>
+          ) : (
+            displayedGoals.map((g) => {
+              const gid = String(g.id);
+              const name = g.creatorName;
+              return (
+                <div key={gid} className="w-full">
+                  <FamilyGoalCard
+                    goal={g}
+                    current={currents[gid] ?? 0}
+                    percentDisplayed={percents[gid]?.percentDisplayed ?? 0}
+                    barPercent={percents[gid]?.barPercent ?? (g.type ? 100 : 0)}
+                    remaining={
+                      typeof percents[gid]?.remaining !== "undefined"
+                        ? percents[gid].remaining
+                        : g.type
+                        ? Math.max(0, Number(g.quantity) - (currents[gid] ?? 0))
+                        : null
+                    }
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
+                    name={name}
+                    userId={userId}
+                  />
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );

@@ -13,10 +13,10 @@ export default function ChangeName({ userId }) {
   useEffect(() => {
     const fetchUsername = async () => {
       try {
-        const baseUrl = process.env.GET_NAME_URL;
+        const baseUrl = process.env.GET_NAME;
         const url = baseUrl
-          ? `${baseUrl}?userId=${user.id}`
-          : `http://localhost:5050/api/name/get?userId=${user.id}`;
+          ? `${baseUrl}?userId=${userId}`
+          : `http://localhost:5050/api/name/get?userId=${userId}`;
         const res = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
@@ -106,7 +106,7 @@ export default function ChangeName({ userId }) {
           Choose a display name
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          This is the name that will be shown in your transactions inside
+          This is the name that will be shown in your contributions inside
           families. Try to keep it short and recognizable.
         </p>
 

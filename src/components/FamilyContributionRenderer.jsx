@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { io } from "socket.io-client";
 import { showError } from "@/app/utils/Toast";
-import ContributionCard from "./ContributionCard";
+import FamilyContributionCard from "./FamilyContributionCard";
 import CreateContributionModal from "./CreateContributionModal";
 import { FunnelX, X, Funnel, Plus } from "lucide-react";
 
@@ -24,8 +24,15 @@ function FilterButton({ active, onClick, children, title }) {
   );
 }
 
-export default function ContributionRenderer({ userId }) {
+export default function FamilyContributionRenderer({
+  userId,
+  family,
+  goals = [],
+}) {
+  const familyId = family?.id ?? null;
+
   const [transactions, setTransactions] = useState([]);
+  const [transactionGoals, setTransactionGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const socketRef = useRef(null);
 
@@ -44,21 +51,48 @@ export default function ContributionRenderer({ userId }) {
   const [draftMaxUnlimited, setDraftMaxUnlimited] = useState(true);
   const [draftGoalFilter, setDraftGoalFilter] = useState("all");
 
-  const [goals, setGoals] = useState([]);
-  const [transactionGoals, setTransactionGoals] = useState([]);
+  // cache + ref to avoid stale closures
+  const [userNames, setUserNames] = useState({});
+  const userNamesRef = useRef({});
 
-  // helper to check ownership of a goal id
-  const isGoalOwned = (goalId) =>
-    goals &&
-    goals.length > 0 &&
-    goals.some((g) => Number(g.id) === Number(goalId));
+  const getNameForUser = async (uid) => {
+    if (!uid) return null;
+    const key = String(uid);
+    if (userNamesRef.current[key]) return userNamesRef.current[key];
+
+    try {
+      const base = process.env.GET_NAME;
+      const url = base
+        ? `${base}?userId=${key}`
+        : `http://localhost:5050/api/name/get?userId=${encodeURIComponent(
+            key
+          )}`;
+
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      const name = json?.name ?? null;
+      if (name) {
+        userNamesRef.current[key] = name;
+        setUserNames((prev) => ({ ...prev, [key]: name }));
+      }
+      return name;
+    } catch (err) {
+      if (process.env.NODE_ENV === "development")
+        console.error("getNameForUser", err);
+      return null;
+    }
+  };
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId && !familyId) {
+      setTransactions([]);
       setLoading(false);
       return;
     }
-
     const controller = new AbortController();
     const { signal } = controller;
     setLoading(true);
@@ -66,32 +100,53 @@ export default function ContributionRenderer({ userId }) {
     const fetchTransactions = async () => {
       try {
         const baseUrl = process.env.GET_TRANSACTIONS;
-        const url = baseUrl
-          ? `${baseUrl}?userId=${userId}`
-          : `http://localhost:5050/api/transactions/get?userId=${userId}`;
+        const urlBase = baseUrl
+          ? baseUrl
+          : `http://localhost:5050/api/transactions/get`;
+        const query = familyId ? `?familyId=${familyId}` : `?userId=${userId}`;
+        const url = `${urlBase}${query}`;
+
         const res = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
         });
-
         if (!res.ok) {
           if (signal.aborted) return;
-          const error = await res.json();
-          throw new Error(error.message);
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Failed to fetch transactions");
         }
-
         const data = await res.json();
         if (!signal.aborted) {
-          // keep original behaviour of selecting only transactions with type === true
           const filtered = (data.transactions ?? []).filter(
             (t) => t.type === true
           );
+
+          // prime names cache for creators found
+          const uniqueIds = [
+            ...new Set(
+              filtered
+                .map(
+                  (t) =>
+                    t.creator_id ??
+                    t.created_by ??
+                    t.user_id ??
+                    t.createdBy ??
+                    t.userId ??
+                    null
+                )
+                .filter(Boolean)
+                .map(String)
+            ),
+          ];
+          uniqueIds.forEach((id) => getNameForUser(id).catch(() => {}));
+
           setTransactions(filtered);
         }
-      } catch (error) {
+      } catch (err) {
         if (signal.aborted) return;
-        if (process.env.NODE_ENV === "development") console.error(error);
+        if (process.env.NODE_ENV === "development")
+          console.error("fetchTransactions", err);
         showError("Unexpected error. Could not load transactions");
       } finally {
         if (!signal.aborted) setLoading(false);
@@ -99,171 +154,81 @@ export default function ContributionRenderer({ userId }) {
     };
 
     fetchTransactions();
-
     return () => controller.abort();
-  }, [userId]);
+  }, [userId, familyId]);
 
   useEffect(() => {
-    if (!userId) return;
-
-    const controller = new AbortController();
-    const { signal } = controller;
-
-    const fetchGoals = async () => {
-      try {
-        const baseUrl = process.env.GET_GOALS;
-        const url = baseUrl
-          ? `${baseUrl}?userId=${userId}`
-          : `http://localhost:5050/api/goals/get?userId=${userId}`;
-
-        const res = await fetch(url, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          signal,
-        });
-
-        if (!res.ok) {
-          if (signal.aborted) return;
-          const error = await res.json();
-          throw new Error(error.message);
-        }
-
-        const data = await res.json();
-        if (!signal.aborted) {
-          const fetchedGoals = data.goals ?? [];
-          setGoals(fetchedGoals);
-        }
-      } catch (error) {
-        if (signal.aborted) return;
-        if (process.env.NODE_ENV === "development") {
-          console.error(error.message);
-        }
-        showError("Unexpected error. Could not load goals");
-      }
-    };
-
-    fetchGoals();
-
-    return () => controller.abort();
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-
+    if (!userId && !familyId) {
+      setTransactionGoals([]);
+      return;
+    }
     const controller = new AbortController();
     const { signal } = controller;
 
     const fetchTransactionGoals = async () => {
       try {
         const baseUrl = process.env.GET_TRANSACTIONS_TG;
-        const url = baseUrl
-          ? `${baseUrl}?userId=${userId}`
-          : `http://localhost:5050/api/transactions/get/tg?userId=${userId}`;
+        const urlBase = baseUrl
+          ? baseUrl
+          : `http://localhost:5050/api/transactions/get/tg`;
+        const query = familyId ? `?familyId=${familyId}` : `?userId=${userId}`;
+        const url = `${urlBase}${query}`;
 
         const res = await fetch(url, {
           method: "GET",
           headers: { "Content-Type": "application/json" },
           signal,
         });
-
         if (!res.ok) {
           if (signal.aborted) return;
-          const error = await res.json();
-          throw new Error(error.message);
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Failed to fetch transactionGoals");
         }
-
         const data = await res.json();
         if (!signal.aborted) {
           const tg = data.transactionGoals ?? [];
-          // if we already have user's goals loaded, filter TGs to only those whose goal_id belongs to the user
-          if (goals && goals.length > 0) {
-            const filtered = tg.filter((t) => isGoalOwned(t.goal_id));
-            setTransactionGoals(filtered);
-          } else {
-            // otherwise store them for now; they'll be pruned once goals load
-            setTransactionGoals(tg);
-          }
+          setTransactionGoals(tg);
         }
-      } catch (error) {
+      } catch (err) {
         if (signal.aborted) return;
         if (process.env.NODE_ENV === "development")
-          console.error(error.message);
+          console.error("fetchTransactionGoals", err);
         showError("Unexpected error. Could not load transaction-goal links");
       }
     };
 
     fetchTransactionGoals();
-
     return () => controller.abort();
-  }, [userId]);
-
-  // Whenever goals change, prune transactionGoals to keep only links that point to our goals
-  useEffect(() => {
-    if (!goals || goals.length === 0) {
-      // no owned goals -> discard all transaction-goal links and transactions
-      setTransactionGoals([]);
-      setTransactions([]);
-      return;
-    }
-
-    setTransactionGoals((prev) => prev.filter((tg) => isGoalOwned(tg.goal_id)));
-  }, [goals]);
-
-  // Whenever transactionGoals change, keep only transactions that are linked to those TGs
-  useEffect(() => {
-    if (!transactionGoals || transactionGoals.length === 0) {
-      setTransactions([]);
-      return;
-    }
-
-    const linkedIds = new Set(
-      transactionGoals.map((tg) => Number(tg.transaction_id))
-    );
-
-    setTransactions((prev) => prev.filter((t) => linkedIds.has(Number(t.id))));
-  }, [transactionGoals]);
+  }, [userId, familyId]);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId && !familyId) return;
 
     const socket = io("http://localhost:5050");
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("join", { userId });
+      socket.emit("join", { familyId });
     });
 
     socket.on("transaction:created", (payload) => {
-      const { transaction, transactionGoal } = payload || {};
+      const { transaction } = payload || {};
       if (!transaction || transaction.type !== true) return;
-
-      // only accept created transactions that are linked to a goal owned by this user
-      if (!transactionGoal) return;
-      if (!isGoalOwned(transactionGoal.goal_id)) return;
-
       setTransactions((ts) => {
-        const exists = ts.some((t) => Number(t.id) === Number(transaction.id));
-        if (exists) return ts;
+        if (ts.some((t) => Number(t.id) === Number(transaction.id))) return ts;
         return [...ts, transaction];
       });
 
-      if (transactionGoal) {
-        setTransactionGoals((tg) => {
-          if (
-            tg.some(
-              (x) =>
-                Number(x.transaction_id) ===
-                Number(transactionGoal.transaction_id)
-            )
-          ) {
-            return tg;
-          } else {
-            // only add TG if it points to a goal we own
-            if (!isGoalOwned(transactionGoal.goal_id)) return tg;
-            return [...tg, transactionGoal];
-          }
-        });
-      }
+      const possibleUser =
+        transaction.creator_id ??
+        transaction.created_by ??
+        transaction.user_id ??
+        transaction.createdBy ??
+        transaction.userId ??
+        payload.userId ??
+        payload.creatorId ??
+        null;
+      if (possibleUser) getNameForUser(possibleUser).catch(() => {});
     });
 
     socket.on("transaction:updated", (payload) => {
@@ -271,122 +236,84 @@ export default function ContributionRenderer({ userId }) {
       if (!transaction || transaction.type !== true) return;
       const id = Number(transaction.id);
       if (!id) return;
+      setTransactions((ts) =>
+        ts.map((t) => (Number(t.id) === id ? { ...t, ...transaction, id } : t))
+      );
 
-      setTransactions((ts) => {
-        const exists = ts.some((t) => Number(t.id) === id);
-        if (exists) {
-          return ts.map((t) =>
-            Number(t.id) === id ? { ...t, ...transaction, id } : t
-          );
-        }
-        return [...ts, { ...transaction, id }];
-      });
+      const possibleUser =
+        transaction.creator_id ??
+        transaction.created_by ??
+        transaction.user_id ??
+        transaction.createdBy ??
+        transaction.userId ??
+        payload.userId ??
+        payload.creatorId ??
+        null;
+      if (possibleUser) getNameForUser(possibleUser).catch(() => {});
     });
 
     socket.on("transaction:deleted", (payload) => {
       const { transactionId } = payload || {};
-      setTransactions((ts) => ts.filter((t) => t.id !== transactionId));
-    });
-
-    socket.on("goal:created", (payload) => {
-      const { goal } = payload || {};
-      if (!goal) return;
-
-      if (String(goal.creator_id) !== String(userId)) return;
-
-      setGoals((gs) => {
-        if (gs.some((g) => Number(g.id) === Number(goal.id))) return gs;
-        return [...gs, goal];
-      });
-    });
-
-    socket.on("goal:updated", (payload) => {
-      const { goal } = payload || {};
-      if (!goal) return;
-
-      setGoals((gs) =>
-        gs.map((g) =>
-          Number(g.id) === Number(goal.id) ? { ...g, ...goal } : g
+      setTransactions((ts) =>
+        ts.filter((t) => Number(t.id) !== Number(transactionId))
+      );
+      setTransactionGoals((tg) =>
+        tg.filter(
+          (link) => Number(link.transaction_id) !== Number(transactionId)
         )
       );
     });
 
-    socket.on("goal:deleted", (payload) => {
-      const { goalId } = payload || {};
-      const id = Number(goalId);
-      if (!id) return;
+    socket.on("transactionGoal:created", (payload) => {
+      const { transactionGoal } = payload || {};
+      if (!transactionGoal) return;
+      setTransactionGoals((tg) => {
+        if (tg.some((x) => Number(x.id) === Number(transactionGoal.id)))
+          return tg;
+        return [...tg, transactionGoal];
+      });
+    });
 
-      setGoals((gs) => gs.filter((g) => Number(g.id) !== id));
-      setTransactionGoals((tg) => tg.filter((t) => Number(t.goal_id) !== id));
-
-      setAppliedGoalFilter((prev) =>
-        String(prev) === String(id) ? null : prev
-      );
-      setDraftGoalFilter((prev) =>
-        String(prev) === String(id) ? "all" : prev
+    socket.on("transactionGoal:deleted", (payload) => {
+      const { id, transaction_id, goal_id } = payload || {};
+      setTransactionGoals((tg) =>
+        tg.filter((x) => {
+          if (typeof id !== "undefined" && id !== null)
+            return Number(x.id) !== Number(id);
+          if (typeof transaction_id !== "undefined" && transaction_id !== null)
+            return Number(x.transaction_id) !== Number(transaction_id);
+          return Number(x.goal_id) !== Number(goal_id);
+        })
       );
     });
+
+    socket.on("disconnect", () => {});
 
     return () => {
       try {
         if (socketRef.current && socketRef.current.connected) {
-          socketRef.current.emit("leave", { userId });
+          socketRef.current.emit("leave", { familyId });
         }
       } finally {
         socketRef.current?.disconnect();
         socketRef.current = null;
       }
     };
-  }, [userId, goals]);
+  }, [userId, familyId]);
 
-  const onUpdate = async (transactionId, data) => {
-    const baseUrl = process.env.UPDATE_TRANSACTION;
-    const url = baseUrl
-      ? `${baseUrl}${transactionId}?userId=${userId}`
-      : `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
-    const res = await fetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message);
-    }
-    return await res.json();
-  };
-
-  const onDelete = async (transactionId) => {
-    const baseUrl = process.env.DELETE_TRANSACTION;
-    const url = baseUrl
-      ? `${baseUrl}${transactionId}?userId=${userId}`
-      : `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;
-    const res = await fetch(url, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message);
-    }
-    return true;
-  };
-
-  const isFilterApplied = useMemo(() => {
-    const noQuantityLimits =
-      (appliedMinQuantity === null || appliedMinQuantity === undefined) &&
-      (appliedMaxQuantity === null || appliedMaxQuantity === undefined) &&
-      (appliedGoalFilter === null || appliedGoalFilter === undefined);
-    return !(appliedTypeFilter === null && noQuantityLimits);
-  }, [
-    appliedTypeFilter,
-    appliedMinQuantity,
-    appliedMaxQuantity,
-    appliedGoalFilter,
-  ]);
+  const allowedTransactionIds = useMemo(() => {
+    if (!goals || goals.length === 0) return new Set();
+    const goalIds = new Set(goals.map((g) => Number(g.id)));
+    const allowed = transactionGoals
+      .filter((tg) => goalIds.has(Number(tg.goal_id)))
+      .map((tg) => Number(tg.transaction_id));
+    return new Set(allowed);
+  }, [goals, transactionGoals]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((t) => {
+      if (!allowedTransactionIds.has(Number(t.id))) return false;
+
       if (appliedTypeFilter === "deposit") {
         if (Number(t.category) !== DEPOSIT_CATEGORY) return false;
       } else if (appliedTypeFilter === "withdraw") {
@@ -401,7 +328,6 @@ export default function ContributionRenderer({ userId }) {
         const matchedTg = transactionGoals.filter(
           (tg) => Number(tg.goal_id) === goalId
         );
-
         if (matchedTg.length === 0) return false;
         const matchedIds = new Set(
           matchedTg.map((tg) => Number(tg.transaction_id))
@@ -411,23 +337,14 @@ export default function ContributionRenderer({ userId }) {
 
       const q = Number(t.quantity);
       if (!Number.isFinite(q)) return false;
-      if (
-        appliedMinQuantity !== null &&
-        appliedMinQuantity !== undefined &&
-        q < appliedMinQuantity
-      )
-        return false;
-      if (
-        appliedMaxQuantity !== null &&
-        appliedMaxQuantity !== undefined &&
-        q > appliedMaxQuantity
-      )
-        return false;
+      if (appliedMinQuantity !== null && q < appliedMinQuantity) return false;
+      if (appliedMaxQuantity !== null && q > appliedMaxQuantity) return false;
 
       return true;
     });
   }, [
     transactions,
+    allowedTransactionIds,
     appliedTypeFilter,
     appliedMinQuantity,
     appliedMaxQuantity,
@@ -447,26 +364,22 @@ export default function ContributionRenderer({ userId }) {
   useEffect(() => {
     if (isFilterOpen) {
       setDraftTypeFilter(appliedTypeFilter);
-
       setDraftMinUnlimited(
         appliedMinQuantity === null || appliedMinQuantity === undefined
       );
       setDraftMaxUnlimited(
         appliedMaxQuantity === null || appliedMaxQuantity === undefined
       );
-
       setDraftMinQuantity(
         appliedMinQuantity === null || appliedMinQuantity === undefined
           ? 0
           : Number(appliedMinQuantity)
       );
-
       setDraftMaxQuantity(
         appliedMaxQuantity === null || appliedMaxQuantity === undefined
           ? sliderMax
           : Number(appliedMaxQuantity)
       );
-
       setDraftGoalFilter(
         appliedGoalFilter === null || appliedGoalFilter === undefined
           ? "all"
@@ -487,19 +400,16 @@ export default function ContributionRenderer({ userId }) {
       setDraftGoalFilter("all");
       return;
     }
-
     const allowedGoals = goals.filter((g) => {
       const gIsTrue = g.type === true || String(g.type) === "true";
       if (draftTypeFilter === "withdraw") return gIsTrue;
       if (draftTypeFilter === "deposit") return !gIsTrue;
       return true;
     });
-
     if (allowedGoals.length === 0) {
       setDraftGoalFilter("none");
       return;
     }
-
     if (
       draftGoalFilter === "all" ||
       !allowedGoals.some((g) => String(g.id) === String(draftGoalFilter))
@@ -510,49 +420,41 @@ export default function ContributionRenderer({ userId }) {
 
   const openFilters = () => {
     setDraftTypeFilter(appliedTypeFilter);
-
     setDraftMinUnlimited(
       appliedMinQuantity === null || appliedMinQuantity === undefined
     );
     setDraftMaxUnlimited(
       appliedMaxQuantity === null || appliedMaxQuantity === undefined
     );
-
     setDraftMinQuantity(
       appliedMinQuantity === null || appliedMinQuantity === undefined
         ? 0
         : Number(appliedMinQuantity)
     );
-
     setDraftMaxQuantity(
       appliedMaxQuantity === null || appliedMaxQuantity === undefined
         ? sliderMax
         : Number(appliedMaxQuantity)
     );
-
     setDraftGoalFilter(
       appliedGoalFilter === null || appliedGoalFilter === undefined
         ? "all"
         : String(appliedGoalFilter)
     );
-
     setIsFilterOpen(true);
   };
 
   const handleApply = () => {
     let min = draftMinUnlimited ? null : draftMinQuantity;
     let max = draftMaxUnlimited ? null : draftMaxQuantity;
-
     if (min !== null && max !== null && min > max) {
       const tmp = min;
       min = max;
       max = tmp;
     }
-
     setAppliedTypeFilter(draftTypeFilter ?? null);
     setAppliedMinQuantity(min !== null ? Number(min) : null);
     setAppliedMaxQuantity(max !== null ? Number(max) : null);
-
     setAppliedGoalFilter(
       draftTypeFilter === null
         ? null
@@ -560,7 +462,6 @@ export default function ContributionRenderer({ userId }) {
         ? null
         : Number(draftGoalFilter)
     );
-
     setIsFilterOpen(false);
   };
 
@@ -591,9 +492,6 @@ export default function ContributionRenderer({ userId }) {
 
   const handleCreated = (createdTransaction, createdTG) => {
     if (!createdTransaction) return;
-    // only add if createdTG links to a goal we own
-    if (!createdTG || !isGoalOwned(createdTG.goal_id)) return;
-
     setTransactions((ts) => {
       const exists = ts.some(
         (t) => Number(t.id) === Number(createdTransaction.id)
@@ -604,9 +502,66 @@ export default function ContributionRenderer({ userId }) {
     if (createdTG) {
       setTransactionGoals((tg) => [...tg, createdTG]);
     }
+
+    const possibleUser =
+      createdTransaction?.creator_id ??
+      createdTransaction?.created_by ??
+      createdTransaction?.user_id ??
+      createdTransaction?.createdBy ??
+      createdTransaction?.userId ??
+      null;
+    if (possibleUser) getNameForUser(possibleUser).catch(() => {});
   };
 
-  if (loading) return <p>Loading user data</p>;
+  const onUpdate = async (transactionId, data) => {
+    const baseUrl = process.env.UPDATE_TRANSACTION;
+    const q = `?familyId=${familyId}`;
+    const url = baseUrl
+      ? `${baseUrl}${transactionId}${q}`
+      : `http://localhost:5050/api/transactions/update/${transactionId}${q}`;
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message);
+    }
+    return await res.json();
+  };
+
+  const onDelete = async (transactionId) => {
+    const baseUrl = process.env.DELETE_TRANSACTION;
+    const q = familyId ? `?familyId=${familyId}` : `?userId=${userId}`;
+    const url = baseUrl
+      ? `${baseUrl}${transactionId}${q}`
+      : `http://localhost:5050/api/transactions/delete/${transactionId}${q}`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message);
+    }
+    return true;
+  };
+
+  const isFilterApplied = useMemo(() => {
+    const noQuantityLimits =
+      (appliedMinQuantity === null || appliedMinQuantity === undefined) &&
+      (appliedMaxQuantity === null || appliedMaxQuantity === undefined) &&
+      (appliedGoalFilter === null || appliedGoalFilter === undefined);
+    return !(appliedTypeFilter === null && noQuantityLimits);
+  }, [
+    appliedTypeFilter,
+    appliedMinQuantity,
+    appliedMaxQuantity,
+    appliedGoalFilter,
+  ]);
+
+  if (loading) return <p>Loading contributions…</p>;
 
   return (
     <div className="w-full h-[60vh] min-h-0 bg-white rounded-xl shadow-lg p-4 flex flex-col mb-4">
@@ -616,6 +571,7 @@ export default function ContributionRenderer({ userId }) {
         userId={userId}
         goals={goals}
         onCreated={handleCreated}
+        familyId={familyId}
       />
 
       <div className="flex items-center justify-between mb-4 border-b border-gray-700 pb-3">
@@ -646,7 +602,7 @@ export default function ContributionRenderer({ userId }) {
                 : "px-2 py-1 rounded-md text-sm font-semibold transition-colors text-gray-700 hover:bg-gray-100"
             }
           >
-            <Funnel size={16} />
+            <Funnel />
           </button>
         </div>
       </div>
@@ -789,7 +745,6 @@ export default function ContributionRenderer({ userId }) {
             </div>
 
             <div className="border-t my-4" />
-
             <div className="mb-4">
               <div className="text-sm font-medium text-gray-600 mb-2">Goal</div>
 
@@ -850,17 +805,30 @@ export default function ContributionRenderer({ userId }) {
           </p>
         ) : (
           filteredTransactions
-            .slice()
             .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-            .map((t) => (
-              <div key={t.id} className="w-full">
-                <ContributionCard
-                  transaction={t}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                />
-              </div>
-            ))
+            .map((t) => {
+              const actorId =
+                t.creator_id ??
+                t.created_by ??
+                t.user_id ??
+                t.createdBy ??
+                t.userId ??
+                null;
+              const creatorName = actorId
+                ? userNames[String(actorId)] ?? null
+                : null;
+
+              return (
+                <div key={t.id} className="w-full">
+                  <FamilyContributionCard
+                    transaction={t}
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
+                    creatorName={creatorName}
+                  />
+                </div>
+              );
+            })
         )}
       </div>
     </div>

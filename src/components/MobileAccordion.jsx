@@ -12,7 +12,7 @@ export default function MobileAccordion({ panels = [] }) {
 
   return (
     <div className="md:hidden space-y-3">
-      {panels.map(({ key, title, subtitle, content }) => {
+      {panels.map(({ key, title, content }) => {
         const isOpen = !!openMap[key];
         return (
           <div
@@ -21,14 +21,11 @@ export default function MobileAccordion({ panels = [] }) {
           >
             <button
               onClick={() => toggle(key)}
+              aria-expanded={isOpen}
+              aria-controls={`panel-${key}`}
               className="w-full flex items-center justify-between px-4 py-3 text-left"
             >
-              <div>
-                <div className="font-medium text-gray-700">{title}</div>
-                {subtitle && (
-                  <div className="text-sm text-gray-500">{subtitle}</div>
-                )}
-              </div>
+              <div className="font-medium text-gray-700">{title}</div>
               <ChevronDown
                 className={`w-5 h-5 transition-transform duration-200 ${
                   isOpen ? "rotate-180" : "rotate-0"

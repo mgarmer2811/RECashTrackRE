@@ -118,6 +118,7 @@ export default function GoalsRenderer({ userId }) {
         console.log("Socket connected", socket.id);
       }
       socket.emit("join", { userId });
+      console.log("JOINED ROOM: ", `user_${userId}`);
     });
 
     socket.on("goal:created", (payload) => {
@@ -288,7 +289,7 @@ export default function GoalsRenderer({ userId }) {
       <div className="flex items-center justify-between border-b border-gray-700 pb-2">
         <div>
           <h3 className="text-lg font-semibold text-gray-700 pt-1">
-            Budgets & Goals
+            Budgets & Savings
           </h3>
           <span className="text-sm text-slate-500">
             {filteredGoals.length} item(s)

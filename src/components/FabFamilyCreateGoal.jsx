@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { showError, showSuccess } from "@/app/utils/Toast";
 
-export default function FabCreateGoal({ userId }) {
+export default function FabFamilyCreateGoal({ userId, family }) {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState(true);
   const [quantity, setQuantity] = useState("");
@@ -30,6 +30,11 @@ export default function FabCreateGoal({ userId }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (!family || !family.id) {
+      showError("Please select a family before creating a goal.");
+      return;
+    }
+
     if (!validName()) {
       showError("Please enter a valid name for the goal");
       return;
@@ -48,12 +53,13 @@ export default function FabCreateGoal({ userId }) {
       name: name.trim(),
       created_at: new Date().toISOString().split("T")[0],
       completed: false,
+      familyId: family.id,
     };
 
     const baseUrl = process.env.CREATE_GOAL;
     const url = baseUrl
-      ? `${baseUrl}?userId=${userId}`
-      : `http://localhost:5050/api/goals/create?userId=${userId}`;
+      ? `${baseUrl}?userId=${userId}&familyId=${family.id}`
+      : `http://localhost:5050/api/goals/create?userId=${userId}&familyId=${family.id}`;
 
     try {
       const res = await fetch(url, {
@@ -62,9 +68,11 @@ export default function FabCreateGoal({ userId }) {
         body: JSON.stringify(payload),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const error = await res.json().catch(() => ({}));
-        throw new Error(error.message || "Failed to create goal");
+        const errorMsg = (data && data.message) || "Failed to create goal";
+        throw new Error(errorMsg);
       }
 
       showSuccess("Goal created successfully!");
@@ -79,8 +87,20 @@ export default function FabCreateGoal({ userId }) {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
-        className="fixed right-4 bottom-6 z-40 p-4 rounded-xl shadow-lg bg-blue-700 hover:bg-blue-800 focus:outline-none"
+        onClick={() => {
+          if (!family || !family.id) {
+            showError("Select a family first to create a goal");
+            return;
+          }
+          setOpen(true);
+        }}
+        className={`fixed right-4 bottom-6 z-40 p-4 rounded-xl shadow-lg ${
+          family && family.id
+            ? "bg-blue-700 hover:bg-blue-800"
+            : "bg-gray-400 cursor-not-allowed"
+        } focus:outline-none`}
+        aria-label="Create goal"
+        title={family && family.id ? "Create goal" : "Select a family first"}
       >
         <Plus size={30} color="white" />
       </button>

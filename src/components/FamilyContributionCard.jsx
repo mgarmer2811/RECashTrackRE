@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, ShieldBan, Flame, Trash2, X } from "lucide-react";
+import { Pencil, ShieldBan, Flame } from "lucide-react";
 import { formatEuro } from "@/app/utils/Utils";
 import ContributionModal from "./ContributionModal";
 
-export default function ContributionCard({ transaction, onUpdate, onDelete }) {
+export default function FamilyContributionCard({
+  transaction,
+  onUpdate,
+  onDelete,
+  creatorName = null,
+}) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -67,6 +72,12 @@ export default function ContributionCard({ transaction, onUpdate, onDelete }) {
             </div>
           </div>
         </div>
+
+        {creatorName ? (
+          <div className="absolute bottom-3 right-3 text-xs text-slate-500">
+            by <span className="font-semibold">{creatorName}</span>
+          </div>
+        ) : null}
       </div>
 
       {isModalOpen && (

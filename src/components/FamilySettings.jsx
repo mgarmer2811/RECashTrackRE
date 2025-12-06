@@ -4,7 +4,7 @@ import { MoveLeft, ArrowRight, Ban } from "lucide-react";
 import { showSuccess, showError } from "@/app/utils/Toast";
 import FamilyIcon from "./FamilyIcon";
 
-export default function FamilySettingsCard({ user }) {
+export default function FamilySettingsCard({ userId }) {
   const [view, setView] = useState("initial");
   const [createdFamilies, setCreatedFamilies] = useState([]);
   const [joinedFamilies, setJoinedFamilies] = useState([]);
@@ -29,8 +29,8 @@ export default function FamilySettingsCard({ user }) {
     try {
       const baseUrl = process.env.GET_FAMILIES;
       const url = baseUrl
-        ? `${baseUrl}?userId=${user.id}`
-        : `http://localhost:5050/api/family/get?userId=${user.id}`;
+        ? `${baseUrl}?userId=${userId}`
+        : `http://localhost:5050/api/family/get?userId=${userId}`;
       const res = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -57,8 +57,8 @@ export default function FamilySettingsCard({ user }) {
     try {
       const baseUrl = process.env.JOIN_FAMILY;
       const url = baseUrl
-        ? `${baseUrl}?userId=${user.id}`
-        : `http://localhost:5050/api/family/join?userId=${user.id}`;
+        ? `${baseUrl}?userId=${userId}`
+        : `http://localhost:5050/api/family/join?userId=${userId}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,8 +89,8 @@ export default function FamilySettingsCard({ user }) {
     try {
       const baseUrl = process.env.CREATE_FAMILY;
       const url = baseUrl
-        ? `${baseUrl}?userId=${user.id}`
-        : `http://localhost:5050/api/family/create?userId=${user.id}`;
+        ? `${baseUrl}?userId=${userId}`
+        : `http://localhost:5050/api/family/create?userId=${userId}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,8 +119,8 @@ export default function FamilySettingsCard({ user }) {
     try {
       const baseUrl = process.env.DELETE_FAMILY;
       const url = baseUrl
-        ? `${baseUrl}${leaveId}?userId=${user.id}`
-        : `http://localhost:5050/api/family/delete/${leaveId}?userId=${user.id}`;
+        ? `${baseUrl}${leaveId}?userId=${userId}`
+        : `http://localhost:5050/api/family/delete/${leaveId}?userId=${userId}`;
       const res = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -156,8 +156,8 @@ export default function FamilySettingsCard({ user }) {
     try {
       const baseUrl = process.env.DELETE_FAMILY;
       const url = baseUrl
-        ? `${baseUrl}${leaveId}?userId=${user.id}`
-        : `http://localhost:5050/api/family/delete/${leaveId}?userId=${user.id}`;
+        ? `${baseUrl}${dissolveId}?userId=${userId}`
+        : `http://localhost:5050/api/family/delete/${dissolveId}?userId=${userId}`;
       const res = await fetch(url, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -212,7 +212,7 @@ export default function FamilySettingsCard({ user }) {
                 has the ability to both create new families and join existing
                 ones.
               </p>
-              <p className="text-gray-700 text-sm italic md:mb-20">
+              <p className="text-gray-700 text-sm italic mb-8 md:mb-20">
                 *Free-tier users are allowed to be a member of up to three
                 families, which includes both families they have created and
                 those they have joined.

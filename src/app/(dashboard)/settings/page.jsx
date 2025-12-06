@@ -29,13 +29,13 @@ export default function SettingsPage() {
       key: "family",
       title: "Family Settings",
       subtitle: "Manage or join families",
-      content: <FamilySettings user={user} />,
+      content: <FamilySettings userId={user.id} />,
     },
     {
       key: "displayName",
       title: "Choose a display name",
       subtitle: "How your name appears in families",
-      content: <ChangeName user={user} />,
+      content: <ChangeName userId={user.id} />,
     },
     {
       key: "signout",
@@ -54,7 +54,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="hidden md:flex">
+      {/*<div className="hidden md:flex">
         <div className="flex w-full">
           <div className="mt-[5vh]">
             <Sidebar />
@@ -78,7 +78,7 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div>*/}
     </>
   );
 }

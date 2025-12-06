@@ -1,5 +1,5 @@
 export default function TabBar({ activeTab, onChange }) {
-  const tabs = ["Operations", "Budgets & Goals"];
+  const tabs = ["Operations", "Budgets & Savings"];
 
   return (
     <div className="flex justify-around mb-4 border-b border-blue-700">

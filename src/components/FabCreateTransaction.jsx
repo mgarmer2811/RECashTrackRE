@@ -87,7 +87,7 @@ export default function FabCreateTransaction({ userId }) {
         onClick={() => setOpen(true)}
         className="fixed right-4 bottom-6 z-40 p-4 rounded-xl shadow-lg bg-blue-700 hover:bg-blue-800 focus:outline-none"
       >
-        <Plus size={20} color="white" />
+        <Plus size={30} color="white" />
       </button>
 
       {open && (

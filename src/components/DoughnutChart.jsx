@@ -243,7 +243,8 @@ export default function DoughnutChart({ userId }) {
     [chartWidth]
   );
 
-  if (!aggregated || aggregated.length === 0) return <p>No expenses found</p>;
+  const hasData = Boolean(aggregated && aggregated.length > 0 && total > 0);
+  const displayedAggregated = aggregated ?? "";
 
   return (
     <div
@@ -293,7 +294,7 @@ export default function DoughnutChart({ userId }) {
             }}
           >
             <VictoryPie
-              data={aggregated}
+              data={displayedAggregated}
               width={chartWidth}
               height={chartHeight}
               padding={0}
@@ -310,7 +311,7 @@ export default function DoughnutChart({ userId }) {
                 />
               }
               origin={{ x: chartWidth / 2, y: chartHeight / 2 }}
-              colorScale={aggregated.map((item) => item.color)}
+              colorScale={displayedAggregated.map((item) => item.color)}
               labelComponent={
                 <VictoryTooltip
                   pointerLength={8}
@@ -321,6 +322,7 @@ export default function DoughnutChart({ userId }) {
                 />
               }
               labels={({ datum }) => {
+                if (!hasData) return `${datum.x}`;
                 const value = Number(datum.y) || 0;
                 const pct =
                   total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
@@ -338,16 +340,31 @@ export default function DoughnutChart({ userId }) {
                 },
               }}
             />
+
+            {!hasData && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div className="text-center">
+                  <div className="text-gray-500 font-semibold">
+                    No expenses yet
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Add expenses to see your spending
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="mt-4 md:mt-0 md:flex-1">
           <ul className="flex flex-wrap gap-2 text-[0.8rem]">
-            {aggregated.map((item) => {
+            {displayedAggregated.map((item) => {
               return (
                 <li
                   key={item.x}
-                  className="flex items-center gap-2 p-1 rounded-md truncate"
+                  className={`flex items-center gap-2 p-1 rounded-md truncate ${
+                    !hasData ? "opacity-70" : ""
+                  }`}
                 >
                   <span
                     className="w-3 h-3 rounded-sm inline-block flex-shrink-0"

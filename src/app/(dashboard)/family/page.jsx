@@ -2,14 +2,18 @@
 
 import { useAuth } from "../../utils/AuthProvider";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Topbar from "@/components/Topbar";
-import Sidebar from "@/components/Sidebar";
 import FamilyGoalsRenderer from "@/components/FamilyGoalsRenderer";
+import FamilyContributionRenderer from "@/components/FamilyContributionRenderer";
+import FabFamilyCreateGoal from "@/components/FabFamilyCreateGoal";
 
 export default function FamilyPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+
+  const [currentFamily, setCurrentFamily] = useState(null);
+  const [currentGoals, setCurrentGoals] = useState([]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,19 +32,20 @@ export default function FamilyPage() {
   return (
     <>
       <Topbar />
-      <div className="hidden md:flex">
-        <div className="flex w-full">
-          <div className="mt-5[vh]">
-            <Sidebar />
-          </div>
-        </div>
-        <div className="flex-1 flex justify center">
-          <div className="w-full max-w-4xl my-[5vh] flex flex-col gap-8 overflow-y-auto px-4">
-            <div className="bg-white p-6 rounded-xl shadow-lg">
-              <FamilyGoalsRenderer userId={user.id} />
-            </div>
-          </div>
-        </div>
+      <div className="md:hidden w-full px-5 pt-20 md:pt-0">
+        <FamilyGoalsRenderer
+          userId={user.id}
+          onSelectedFamilyChange={(family, goals) => {
+            setCurrentFamily(family);
+            setCurrentGoals(goals ?? []);
+          }}
+        />
+        <FamilyContributionRenderer
+          userId={user.id}
+          family={currentFamily}
+          goals={currentGoals}
+        />
+        <FabFamilyCreateGoal userId={user.id} family={currentFamily} />
       </div>
     </>
   );

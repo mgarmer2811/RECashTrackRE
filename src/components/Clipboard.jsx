@@ -21,7 +21,10 @@ export default function Clipboard({ userId }) {
     const { signal } = controller;
 
     const fetchGoals = async () => {
-      let url = `http://localhost:5050/api/goals/get?userId=${userId}`;
+      const baseUrl = process.env.GET_GOALS;
+      const url = baseUrl
+        ? `${baseUrl}?userId=${userId}`
+        : `http://localhost:5050/api/goals/get?userId=${userId}`;
 
       try {
         const res = await fetch(url, {
@@ -98,8 +101,13 @@ export default function Clipboard({ userId }) {
       created_at: date,
     };
 
-    let url = contributeToGoal
-      ? `http://localhost:5050/api/transactions/create/?goalId=${goalId}&userId=${userId}`
+    const baseUrl = process.env.CREATE_GOAL;
+    const url = contributeToGoal
+      ? baseUrl
+        ? `${baseUrl}?goalId=${goalId}&userId=${userId}`
+        : `http://localhost:5050/api/transactions/create/?goalId=${goalId}&userId=${userId}`
+      : baseUrl
+      ? `${baseUrl}?userId=${userId}`
       : `http://localhost:5050/api/transactions/create/?userId=${userId}`;
 
     try {
