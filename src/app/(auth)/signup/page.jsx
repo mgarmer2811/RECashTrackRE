@@ -23,10 +23,15 @@ export default function SignUpPage() {
     setLoading(true);
     setStatusMsg(null);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp(
+      {
+        email,
+        password,
+      },
+      {
+        redirectTo: "https://re-cashtrack.vercel.app/signin",
+      }
+    );
 
     setLoading(false);
     if (error) {
