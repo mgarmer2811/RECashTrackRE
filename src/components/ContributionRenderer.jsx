@@ -226,7 +226,7 @@ export default function ContributionRenderer({ userId }) {
   useEffect(() => {
     if (!userId) return;
 
-    const socket = io("http://localhost:5050");
+    const socket = io("https://rct-api-iia5.onrender.com");
     socketRef.current = socket;
 
     socket.on("connect", () => {
