@@ -27,7 +27,7 @@ export default function FamilySettingsCard({ userId }) {
 
   async function fetchFamilies() {
     try {
-      const baseUrl = process.env.GET_FAMILIES;
+      const baseUrl = process.env.NEXT_PUBLIC_GET_FAMILIES;
       const url = baseUrl
         ? `${baseUrl}?userId=${userId}`
         : `http://localhost:5050/api/family/get?userId=${userId}`;
@@ -55,7 +55,7 @@ export default function FamilySettingsCard({ userId }) {
     if (totalFamiliesCount() >= 3) return;
     setIsJoining(true);
     try {
-      const baseUrl = process.env.JOIN_FAMILY;
+      const baseUrl = process.env.NEXT_PUBLIC_JOIN_FAMILY;
       const url = baseUrl
         ? `${baseUrl}?userId=${userId}`
         : `http://localhost:5050/api/family/join?userId=${userId}`;
@@ -87,7 +87,7 @@ export default function FamilySettingsCard({ userId }) {
     if (totalFamiliesCount() >= 3) return;
     setIsCreating(true);
     try {
-      const baseUrl = process.env.CREATE_FAMILY;
+      const baseUrl = process.env.NEXT_PUBLIC_CREATE_FAMILY;
       const url = baseUrl
         ? `${baseUrl}?userId=${userId}`
         : `http://localhost:5050/api/family/create?userId=${userId}`;
@@ -117,7 +117,7 @@ export default function FamilySettingsCard({ userId }) {
     if (!leaveId) return;
     setIsLeaving(true);
     try {
-      const baseUrl = process.env.DELETE_FAMILY;
+      const baseUrl = process.env.NEXT_PUBLIC_DELETE_FAMILY;
       const url = baseUrl
         ? `${baseUrl}${leaveId}?userId=${userId}`
         : `http://localhost:5050/api/family/delete/${leaveId}?userId=${userId}`;
@@ -154,7 +154,7 @@ export default function FamilySettingsCard({ userId }) {
     if (!confirmed) return;
     setIsDissolving(true);
     try {
-      const baseUrl = process.env.DELETE_FAMILY;
+      const baseUrl = process.env.NEXT_PUBLIC_DELETE_FAMILY;
       const url = baseUrl
         ? `${baseUrl}${dissolveId}?userId=${userId}`
         : `http://localhost:5050/api/family/delete/${dissolveId}?userId=${userId}`;

@@ -71,7 +71,7 @@ export default function TransactionRenderer({ userId }) {
 
     const fetchTransactions = async () => {
       try {
-        const baseUrl = process.env.GET_TRANSACTIONS;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_TRANSACTIONS;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/transactions/get?userId=${userId}`;
@@ -168,7 +168,7 @@ export default function TransactionRenderer({ userId }) {
   }, [userId]);
 
   const onUpdate = async (transactionId, data) => {
-    const baseUrl = process.env.UPDATE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_UPDATE_TRANSACTION;
     const url = baseUrl
       ? `${baseUrl}${transactionId}?userId=${userId}`
       : `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
@@ -190,7 +190,7 @@ export default function TransactionRenderer({ userId }) {
   };
 
   const onDelete = async (transactionId) => {
-    const baseUrl = process.env.DELETE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_DELETE_TRANSACTION;
     const url = baseUrl
       ? `${baseUrl}${transactionId}?userId=${userId}`
       : `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;

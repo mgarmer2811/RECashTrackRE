@@ -13,7 +13,7 @@ export default function ChangeName({ userId }) {
   useEffect(() => {
     const fetchUsername = async () => {
       try {
-        const baseUrl = process.env.GET_NAME;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_NAME;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/name/get?userId=${userId}`;
@@ -61,7 +61,7 @@ export default function ChangeName({ userId }) {
 
     setLoading(true);
     try {
-      const baseUrl = process.env.CHANGE_NAME;
+      const baseUrl = process.env.NEXT_PUBLIC_CHANGE_NAME;
       const url = baseUrl
         ? `${baseUrl}?userId=${userId}`
         : `http://localhost:5050/api/name/change?userId=${userId}`;

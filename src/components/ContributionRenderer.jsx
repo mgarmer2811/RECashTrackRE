@@ -65,7 +65,7 @@ export default function ContributionRenderer({ userId }) {
 
     const fetchTransactions = async () => {
       try {
-        const baseUrl = process.env.GET_TRANSACTIONS;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_TRANSACTIONS;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/transactions/get?userId=${userId}`;
@@ -111,7 +111,7 @@ export default function ContributionRenderer({ userId }) {
 
     const fetchGoals = async () => {
       try {
-        const baseUrl = process.env.GET_GOALS;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_GOALS;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/goals/get?userId=${userId}`;
@@ -155,7 +155,7 @@ export default function ContributionRenderer({ userId }) {
 
     const fetchTransactionGoals = async () => {
       try {
-        const baseUrl = process.env.GET_TRANSACTIONS_TG;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_TRANSACTIONS_TG;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/transactions/get/tg?userId=${userId}`;
@@ -340,7 +340,7 @@ export default function ContributionRenderer({ userId }) {
   }, [userId, goals]);
 
   const onUpdate = async (transactionId, data) => {
-    const baseUrl = process.env.UPDATE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_UPDATE_TRANSACTION;
     const url = baseUrl
       ? `${baseUrl}${transactionId}?userId=${userId}`
       : `http://localhost:5050/api/transactions/update/${transactionId}?userId=${userId}`;
@@ -357,7 +357,7 @@ export default function ContributionRenderer({ userId }) {
   };
 
   const onDelete = async (transactionId) => {
-    const baseUrl = process.env.DELETE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_DELETE_TRANSACTION;
     const url = baseUrl
       ? `${baseUrl}${transactionId}?userId=${userId}`
       : `http://localhost:5050/api/transactions/delete/${transactionId}?userId=${userId}`;

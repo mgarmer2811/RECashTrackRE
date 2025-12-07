@@ -45,7 +45,7 @@ export default function SignUpPage() {
     } else {
       const user = data.user;
       try {
-        const baseUrl = process.env.CREATE_NAME;
+        const baseUrl = process.env.NEXT_PUBLIC_CREATE_NAME;
 
         const url = baseUrl
           ? `${baseUrl}?userId=${user.id}`

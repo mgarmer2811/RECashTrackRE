@@ -83,7 +83,7 @@ export default function CreateContributionModal({
       created_at: date,
     };
 
-    const baseUrl = process.env.CREATE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_CREATE_TRANSACTION;
     const goalQuery = goalId ? `&goalId=${goalId}&familyId=${familyId}` : "";
     const url = baseUrl
       ? `${baseUrl}?userId=${userId}${goalQuery}`
