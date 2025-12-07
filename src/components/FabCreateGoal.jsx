@@ -50,7 +50,7 @@ export default function FabCreateGoal({ userId }) {
       completed: false,
     };
 
-    const baseUrl = process.env.CREATE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_CREATE_GOAL;
     const url = baseUrl
       ? `${baseUrl}?userId=${userId}`
       : `http://localhost:5050/api/goals/create?userId=${userId}`;

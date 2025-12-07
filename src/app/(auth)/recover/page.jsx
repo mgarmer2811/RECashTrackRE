@@ -15,7 +15,8 @@ export default function RecoverPage() {
     setStatusMsg(null);
     setLoading(true);
 
-    const redirectTo = process.env.RESET || "http://localhost:3000/reset";
+    const redirectTo =
+      process.env.NEXT_PUBLIC_RESET || "http://localhost:3000/reset";
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
     });

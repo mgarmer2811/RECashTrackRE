@@ -55,7 +55,7 @@ export default function FabCreateTransaction({ userId }) {
       created_at: date,
     };
 
-    const baseUrl = process.env.CREATE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_CREATE_TRANSACTION;
     const url = baseUrl
       ? `${baseUrl}?userId=${userId}`
       : `http://localhost:5050/api/transactions/create/?userId=${userId}`;

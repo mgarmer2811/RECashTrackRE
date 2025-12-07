@@ -56,7 +56,7 @@ export default function FabFamilyCreateGoal({ userId, family }) {
       familyId: family.id,
     };
 
-    const baseUrl = process.env.CREATE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_CREATE_GOAL;
     const url = baseUrl
       ? `${baseUrl}?userId=${userId}&familyId=${family.id}`
       : `http://localhost:5050/api/goals/create?userId=${userId}&familyId=${family.id}`;

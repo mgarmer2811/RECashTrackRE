@@ -42,7 +42,7 @@ export default function GoalsRenderer({ userId }) {
 
     const fetchGoals = async () => {
       try {
-        const baseUrl = process.env.GET_GOALS;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_GOALS;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/goals/get?userId=${userId}`;
@@ -225,7 +225,7 @@ export default function GoalsRenderer({ userId }) {
   }, [userId]);
 
   const onUpdate = async (goalId, data) => {
-    const baseUrl = process.env.UPDATE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_UPDATE_GOAL;
     const url = baseUrl
       ? `${baseUrl}${goalId}?userId=${userId}`
       : `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}`;
@@ -247,7 +247,7 @@ export default function GoalsRenderer({ userId }) {
   };
 
   const onDelete = async (goalId) => {
-    const baseUrl = process.env.DELETE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_DELETE_GOAL;
     const url = baseUrl
       ? `${baseUrl}${goalId}?userId=${userId}`
       : `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}`;

@@ -61,7 +61,7 @@ export default function FamilyContributionRenderer({
     if (userNamesRef.current[key]) return userNamesRef.current[key];
 
     try {
-      const base = process.env.GET_NAME;
+      const base = process.env.NEXT_PUBLIC_GET_NAME;
       const url = base
         ? `${base}?userId=${key}`
         : `http://localhost:5050/api/name/get?userId=${encodeURIComponent(
@@ -99,7 +99,7 @@ export default function FamilyContributionRenderer({
 
     const fetchTransactions = async () => {
       try {
-        const baseUrl = process.env.GET_TRANSACTIONS;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_TRANSACTIONS;
         const urlBase = baseUrl
           ? baseUrl
           : `http://localhost:5050/api/transactions/get`;
@@ -167,7 +167,7 @@ export default function FamilyContributionRenderer({
 
     const fetchTransactionGoals = async () => {
       try {
-        const baseUrl = process.env.GET_TRANSACTIONS_TG;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_TRANSACTIONS_TG;
         const urlBase = baseUrl
           ? baseUrl
           : `http://localhost:5050/api/transactions/get/tg`;
@@ -514,7 +514,7 @@ export default function FamilyContributionRenderer({
   };
 
   const onUpdate = async (transactionId, data) => {
-    const baseUrl = process.env.UPDATE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_UPDATE_TRANSACTION;
     const q = `?familyId=${familyId}`;
     const url = baseUrl
       ? `${baseUrl}${transactionId}${q}`
@@ -532,7 +532,7 @@ export default function FamilyContributionRenderer({
   };
 
   const onDelete = async (transactionId) => {
-    const baseUrl = process.env.DELETE_TRANSACTION;
+    const baseUrl = process.env.NEXT_PUBLIC_DELETE_TRANSACTION;
     const q = familyId ? `?familyId=${familyId}` : `?userId=${userId}`;
     const url = baseUrl
       ? `${baseUrl}${transactionId}${q}`

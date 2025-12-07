@@ -21,7 +21,7 @@ export default function Clipboard({ userId }) {
     const { signal } = controller;
 
     const fetchGoals = async () => {
-      const baseUrl = process.env.GET_GOALS;
+      const baseUrl = process.env.NEXT_PUBLIC_GET_GOALS;
       const url = baseUrl
         ? `${baseUrl}?userId=${userId}`
         : `http://localhost:5050/api/goals/get?userId=${userId}`;
@@ -101,7 +101,7 @@ export default function Clipboard({ userId }) {
       created_at: date,
     };
 
-    const baseUrl = process.env.CREATE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_CREATE_GOAL;
     const url = contributeToGoal
       ? baseUrl
         ? `${baseUrl}?goalId=${goalId}&userId=${userId}`

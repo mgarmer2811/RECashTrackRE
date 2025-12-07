@@ -49,7 +49,7 @@ export default function FamilyGoalsRenderer({
     const fetchFamiliesAndGoals = async () => {
       setLoading(true);
       try {
-        const baseUrlFamilies = process.env.GET_FAMILIES;
+        const baseUrlFamilies = process.env.NEXT_PUBLIC_GET_FAMILIES;
         const familiesUrl = baseUrlFamilies
           ? `${baseUrlFamilies}?userId=${userId}`
           : `http://localhost:5050/api/family/get?userId=${userId}`;
@@ -75,7 +75,7 @@ export default function FamilyGoalsRenderer({
 
         const promises = unifiedFamilies.map(async (family) => {
           try {
-            const baseUrlGoals = process.env.GET_GOALS;
+            const baseUrlGoals = process.env.NEXT_PUBLIC_GET_GOALS;
             const url = baseUrlGoals
               ? `${baseUrlGoals}?familyId=${family.id}&userId=${userId}`
               : `http://localhost:5050/api/goals/get?familyId=${family.id}&userId=${userId}`;
@@ -393,7 +393,7 @@ export default function FamilyGoalsRenderer({
   }, [families]);
 
   const onUpdate = async (goalId, data) => {
-    const baseUrl = process.env.UPDATE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_UPDATE_GOAL;
     const url = baseUrl
       ? `${baseUrl}${goalId}?userId=${userId}&familyId=${selectedFamilyId}`
       : `http://localhost:5050/api/goals/update/${goalId}?userId=${userId}&familyId=${selectedFamilyId}`;
@@ -416,7 +416,7 @@ export default function FamilyGoalsRenderer({
   };
 
   const onDelete = async (goalId) => {
-    const baseUrl = process.env.DELETE_GOAL;
+    const baseUrl = process.env.NEXT_PUBLIC_DELETE_GOAL;
     const url = baseUrl
       ? `${baseUrl}${goalId}?userId=${userId}&familyId=${selectedFamilyId}`
       : `http://localhost:5050/api/goals/delete/${goalId}?userId=${userId}&familyId=${selectedFamilyId}`;

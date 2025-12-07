@@ -46,7 +46,7 @@ export default function DoughnutChart({ userId }) {
 
     const fetchTransactions = async () => {
       try {
-        const baseUrl = process.env.GET_TRANSACTIONS;
+        const baseUrl = process.env.NEXT_PUBLIC_GET_TRANSACTIONS;
         const url = baseUrl
           ? `${baseUrl}?userId=${userId}`
           : `http://localhost:5050/api/transactions/get?userId=${userId}`;
